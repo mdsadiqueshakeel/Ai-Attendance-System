@@ -120,6 +120,11 @@ public class StudentService {
         }
     }
 
+    public Student requireByUserId(UUID userId) {
+        return studentRepository.findByUser_Id(userId)
+                .orElseThrow(() -> new NotFoundException("Student profile not found for this user"));
+    }
+
     private static StudentResponse toResponse(Student s) {
         User u = s.getUser();
         return new StudentResponse(

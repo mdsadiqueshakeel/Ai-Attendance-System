@@ -8,22 +8,19 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.HttpHeaders;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.List;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
     private final JwtService jwtService;
-    private final UserDetailsService userDetailsService;
 
-    public JwtAuthFilter(JwtService jwtService, UserDetailsService userDetailsService) {
+    public JwtAuthFilter(JwtService jwtService) {
         this.jwtService = jwtService;
-        this.userDetailsService = userDetailsService;
     }
 
     @Override
@@ -40,14 +37,17 @@ public class JwtAuthFilter extends OncePerRequestFilter {
 
         String token = auth.substring("Bearer ".length()).trim();
         try {
-            String email = jwtService.extractEmail(token);
-            if (email != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-                UserDetails ud = userDetailsService.loadUserByUsername(email);
-                // Parsing already validates signature + exp + issuer
-                jwtService.parse(token);
+            // Parsing validates signature + exp + issuer
+            var claims = jwtService.parse(token).getBody();
+            String email = claims.getSubject();
+            String uid = claims.get("uid", String.class);
+            String role = claims.get("role", String.class);
 
+            if (email != null && uid != null && role != null
+                    && SecurityContextHolder.getContext().getAuthentication() == null) {
+                JwtPrincipal principal = new JwtPrincipal(uid, email, role);
                 UsernamePasswordAuthenticationToken authentication =
-                        new UsernamePasswordAuthenticationToken(ud, null, ud.getAuthorities());
+                        new UsernamePasswordAuthenticationToken(principal, null, List.of(principal.asAuthority()));
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authentication);
             }
@@ -58,4 +58,3 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-

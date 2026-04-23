@@ -14,5 +14,7 @@ public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
 
     @EntityGraph(attributePaths = {"student", "student.user"})
     List<Attendance> findByDate(LocalDate date);
-}
 
+    @EntityGraph(attributePaths = {"student"})
+    List<Attendance> findByStudent_IdAndDateBetweenOrderByDateAsc(UUID studentId, LocalDate from, LocalDate to);
+}

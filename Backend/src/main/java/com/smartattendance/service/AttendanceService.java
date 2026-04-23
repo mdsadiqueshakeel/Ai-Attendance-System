@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDate;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -81,5 +82,23 @@ public class AttendanceService {
 
         return new ClassReportResponse(date, total, present, absent, entries);
     }
-}
 
+    public List<AttendanceResponse> getRange(UUID studentId, LocalDate from, LocalDate to) {
+        if (from == null || to == null) {
+            throw new IllegalArgumentException("from and to are required");
+        }
+        if (to.isBefore(from)) {
+            throw new IllegalArgumentException("to must be on/after from");
+        }
+
+        // Ensure student exists (better error message than returning empty list)
+        studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found"));
+
+        List<Attendance> records = attendanceRepository.findByStudent_IdAndDateBetweenOrderByDateAsc(studentId, from, to);
+        List<AttendanceResponse> out = new ArrayList<>(records.size());
+        for (Attendance a : records) {
+            out.add(new AttendanceResponse(a.getId(), a.getStudent().getId(), a.getDate(), a.getStatus(), true));
+        }
+        return out;
+    }
+}
