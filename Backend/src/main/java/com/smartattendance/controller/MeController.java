@@ -3,19 +3,26 @@ package com.smartattendance.controller;
 import com.smartattendance.dto.attendance.AttendanceResponse;
 import com.smartattendance.dto.me.MeResponse;
 import com.smartattendance.dto.me.MyStudentResponse;
+import com.smartattendance.dto.me.UpdateMyRollNumberRequest;
 import com.smartattendance.entity.User;
 import com.smartattendance.exception.NotFoundException;
 import com.smartattendance.repository.UserRepository;
 import com.smartattendance.security.SecurityUtils;
 import com.smartattendance.service.AttendanceService;
 import com.smartattendance.service.StudentService;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestPart;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -70,5 +77,20 @@ public class MeController {
         var s = studentService.requireByUserId(userId);
         return attendanceService.getRange(s.getId(), from, to);
     }
-}
 
+    @PatchMapping("/student/roll-number")
+    @PreAuthorize("hasRole('STUDENT')")
+    public MyStudentResponse updateMyRollNumber(@Valid @RequestBody UpdateMyRollNumberRequest req) {
+        UUID userId = SecurityUtils.currentUserId();
+        var updated = studentService.updateMyRollNumber(userId, req.getRollNumber());
+        return new MyStudentResponse(updated.getId(), updated.getRollNumber(), updated.getImageUrl());
+    }
+
+    @PostMapping(path = "/student/image", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('STUDENT')")
+    public MyStudentResponse uploadMyImage(@RequestPart("file") MultipartFile file) {
+        UUID userId = SecurityUtils.currentUserId();
+        var updated = studentService.uploadMyImage(userId, file);
+        return new MyStudentResponse(updated.getId(), updated.getRollNumber(), updated.getImageUrl());
+    }
+}
