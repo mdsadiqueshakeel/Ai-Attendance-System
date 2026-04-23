@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -7,35 +7,72 @@ import {
   SafeAreaView, 
   ScrollView,
   TextInput,
-  StatusBar
+  StatusBar,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
-import { Plus, Search, ArrowLeft } from 'lucide-react-native';
+import { Plus, Search, ArrowLeft, UserCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import studentService from '../services/studentService';
+import authService from '../services/authService';
+import AuthImage from '../components/AuthImage';
 
 const StudentScreen = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [students, setStudents] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  const students = [
-    { id: 1, name: 'Emma Johnson', roll: 'CS001', image: '👩', attendance: 95 },
-    { id: 2, name: 'Michael Chen', roll: 'CS002', image: '👨', attendance: 92 },
-    { id: 3, name: 'Sarah Williams', roll: 'CS003', image: '👩', attendance: 98 },
-    { id: 4, name: 'James Brown', roll: 'CS004', image: '👨', attendance: 88 },
-    { id: 5, name: 'Olivia Davis', roll: 'CS005', image: '👩', attendance: 94 },
-    { id: 6, name: 'Daniel Garcia', roll: 'CS006', image: '👨', attendance: 90 },
-    { id: 7, name: 'Sophia Martinez', roll: 'CS007', image: '👩', attendance: 96 },
-    { id: 8, name: 'Liam Anderson', roll: 'CS008', image: '👨', attendance: 87 },
-  ];
+  useEffect(() => {
+    checkRole();
+    fetchStudents();
+  }, []);
+
+  const checkRole = async () => {
+    const role = await authService.getRole();
+    setIsAdmin(role === 'ADMIN');
+  };
+
+  const fetchStudents = async () => {
+    setLoading(true);
+    try {
+      const data = await studentService.getAllStudents();
+      setStudents(data);
+    } catch (error) {
+      // Handled globally
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const onRefresh = async () => {
+    setRefreshing(true);
+    try {
+      const data = await studentService.getAllStudents();
+      setStudents(data);
+    } catch (error) {
+    } finally {
+      setRefreshing(false);
+    }
+  };
 
   const filteredStudents = students.filter(
     (s) =>
       s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      s.roll.toLowerCase().includes(searchQuery.toLowerCase())
+      s.rollNumber.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
-      <ScrollView bounces={false} showsVerticalScrollIndicator={false}>
+      <ScrollView 
+        bounces={false} 
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         <LinearGradient
           colors={['#4F46E5', '#2563EB']}
           style={styles.header}
@@ -68,36 +105,72 @@ const StudentScreen = ({ navigation }) => {
 
         <View style={styles.body}>
           <Text style={styles.sectionTitle}>
-            All Students ({filteredStudents.length})
+            {loading ? 'Fetching students...' : `All Students (${filteredStudents.length})`}
           </Text>
 
-          <View style={styles.list}>
-            {filteredStudents.map((student) => (
-              <View key={student.id} style={styles.studentCard}>
-                <View style={styles.avatarContainer}>
-                  <Text style={styles.avatarText}>{student.image}</Text>
+          {loading ? (
+            <ActivityIndicator size="large" color="#4F46E5" style={{ marginTop: 50 }} />
+          ) : (
+            <View style={styles.list}>
+              {filteredStudents.length > 0 ? (
+                filteredStudents.map((student) => {
+                  const Card = isAdmin ? TouchableOpacity : View;
+                  const cardProps = isAdmin
+                    ? {
+                        activeOpacity: 0.85,
+                        onPress: () =>
+                          navigation.navigate('StudentAttendance', {
+                            studentId: student.id,
+                            name: student.name,
+                            rollNumber: student.rollNumber,
+                            imageUrl: student.imageUrl,
+                          }),
+                      }
+                    : {};
+                  return (
+                  <Card
+                    key={student.id}
+                    style={styles.studentCard}
+                    {...cardProps}
+                  >
+                    <View style={styles.avatarContainer}>
+                      {student.imageUrl ? (
+                        <AuthImage uri={student.imageUrl} style={styles.avatarImage} />
+                      ) : (
+                        <UserCircle size={40} color="#94A3B8" />
+                      )}
+                    </View>
+                    <View style={styles.studentInfo}>
+                      <Text style={styles.studentName}>{student.name}</Text>
+                      <Text style={styles.studentRoll}>Roll: {student.rollNumber}</Text>
+                    </View>
+                    <View style={styles.attendanceInfo}>
+                      <Text style={styles.attendanceValue}>{student.attendancePercentage || 0}%</Text>
+                      <Text style={styles.attendanceLabel}>Attendance</Text>
+                    </View>
+                  </Card>
+                );
+              })
+              ) : (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyText}>No students found</Text>
                 </View>
-                <View style={styles.studentInfo}>
-                  <Text style={styles.studentName}>{student.name}</Text>
-                  <Text style={styles.studentRoll}>Roll: {student.roll}</Text>
-                </View>
-                <View style={styles.attendanceInfo}>
-                  <Text style={styles.attendanceValue}>{student.attendance}%</Text>
-                  <Text style={styles.attendanceLabel}>Attendance</Text>
-                </View>
-              </View>
-            ))}
-          </View>
+              )}
+            </View>
+          )}
         </View>
         <View style={{ height: 100 }} />
       </ScrollView>
 
-      <TouchableOpacity 
-        style={styles.fab}
-        activeOpacity={0.8}
-      >
-        <Plus size={32} color="#fff" />
-      </TouchableOpacity>
+      {isAdmin && (
+        <TouchableOpacity 
+          style={styles.fab}
+          activeOpacity={0.8}
+          onPress={() => navigation.navigate('AddStudent')}
+        >
+          <Plus size={32} color="#fff" />
+        </TouchableOpacity>
+      )}
     </View>
   );
 };
@@ -183,9 +256,11 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  avatarText: {
-    fontSize: 28,
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   studentInfo: {
     flex: 1,
@@ -229,6 +304,14 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 12,
     elevation: 10,
+  },
+  emptyState: {
+    alignItems: 'center',
+    marginTop: 50,
+  },
+  emptyText: {
+    color: '#6B7280',
+    fontSize: 16,
   },
 });
 

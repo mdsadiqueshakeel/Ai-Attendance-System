@@ -8,24 +8,25 @@ import {
   SafeAreaView, 
   KeyboardAvoidingView, 
   Platform,
-  Dimensions,
   ActivityIndicator,
-  Alert
+  Alert,
+  ScrollView
 } from 'react-native';
-import { Mail, Lock, LogIn, Users } from 'lucide-react-native';
+import { Mail, Lock, User, LogIn, Users } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import authService from '../services/authService';
 
-const { width } = Dimensions.get('window');
-
-const LoginScreen = ({ navigation }) => {
+const RegisterScreen = ({ navigation }) => {
+  const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('STUDENT');
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
   const validate = () => {
     let newErrors = {};
+    if (!name) newErrors.name = 'Name is required';
     if (!email) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(email)) {
@@ -40,20 +41,21 @@ const LoginScreen = ({ navigation }) => {
     return Object.keys(newErrors).length === 0;
   };
 
-const handleLogin = async () => {
-  if (!validate()) return;
+  const handleRegister = async () => {
+    if (!validate()) return;
 
-  setLoading(true);
-  try {
-    const res = await authService.login(email, password);
-    const role = String(res?.user?.role || '').toUpperCase();
-    navigation.replace(role === 'STUDENT' ? 'StudentApp' : 'AdminApp');
-  } catch (error) {
-    // Error is handled globally in api.js interceptor
-  } finally {
-    setLoading(false);
-  }
-};
+    setLoading(true);
+    try {
+      await authService.register({ name, email, password, role });
+      Alert.alert('Success', 'Registration successful. Please login.', [
+        { text: 'OK', onPress: () => navigation.navigate('Login') }
+      ]);
+    } catch (error) {
+      // Error is handled globally
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <LinearGradient
@@ -65,16 +67,57 @@ const handleLogin = async () => {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           style={styles.keyboardView}
         >
-          <View style={styles.content}>
+          <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
             <View style={styles.header}>
               <View style={styles.logoContainer}>
                 <Users size={40} color="#fff" />
               </View>
-              <Text style={styles.title}>Smart Attendance</Text>
-              <Text style={styles.subtitle}>Sign in to continue</Text>
+              <Text style={styles.title}>Create Account</Text>
+              <Text style={styles.subtitle}>Join Smart Attendance system</Text>
             </View>
 
             <View style={styles.form}>
+              <View style={styles.roleRow}>
+                <TouchableOpacity
+                  style={[styles.roleButton, role === 'STUDENT' && styles.roleButtonActive]}
+                  onPress={() => setRole('STUDENT')}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.roleText, role === 'STUDENT' && styles.roleTextActive]}>
+                    Student
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.roleButton, role === 'ADMIN' && styles.roleButtonActive]}
+                  onPress={() => setRole('ADMIN')}
+                  disabled={loading}
+                  activeOpacity={0.85}
+                >
+                  <Text style={[styles.roleText, role === 'ADMIN' && styles.roleTextActive]}>
+                    Admin
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
+              <View style={styles.inputGroup}>
+                <Text style={styles.label}>Full Name</Text>
+                <View style={[styles.inputWrapper, errors.name && styles.inputError]}>
+                  <User size={20} color="#94A3B8" style={styles.inputIcon} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="John Doe"
+                    value={name}
+                    onChangeText={(text) => {
+                      setName(text);
+                      if (errors.name) setErrors({ ...errors, name: null });
+                    }}
+                    editable={!loading}
+                  />
+                </View>
+                {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+              </View>
+
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Email</Text>
                 <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
@@ -101,7 +144,7 @@ const handleLogin = async () => {
                   <Lock size={20} color="#94A3B8" style={styles.inputIcon} />
                   <TextInput
                     style={styles.input}
-                    placeholder="Enter your password"
+                    placeholder="Minimum 8 characters"
                     value={password}
                     onChangeText={(text) => {
                       setPassword(text);
@@ -116,7 +159,7 @@ const handleLogin = async () => {
 
               <TouchableOpacity 
                 style={[styles.button, loading && styles.buttonDisabled]} 
-                onPress={handleLogin}
+                onPress={handleRegister}
                 activeOpacity={0.8}
                 disabled={loading}
               >
@@ -125,24 +168,21 @@ const handleLogin = async () => {
                 ) : (
                   <>
                     <LogIn size={20} color="#fff" style={{ marginRight: 8 }} />
-                    <Text style={styles.buttonText}>Sign In</Text>
+                    <Text style={styles.buttonText}>Register</Text>
                   </>
                 )}
               </TouchableOpacity>
 
               <TouchableOpacity 
-                style={styles.registerLink} 
-                onPress={() => navigation.navigate('Register')}
+                style={styles.loginLink} 
+                onPress={() => navigation.navigate('Login')}
                 disabled={loading}
               >
-                <Text style={styles.registerText}>Don't have an account? <Text style={styles.registerTextBold}>Register</Text></Text>
+                <Text style={styles.loginText}>Already have an account? <Text style={styles.loginTextBold}>Login</Text></Text>
               </TouchableOpacity>
             </View>
-
-            <Text style={styles.footerText}>
-              Protected by biometric authentication
-            </Text>
-          </View>
+            <View style={{ height: 40 }} />
+          </ScrollView>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </LinearGradient>
@@ -159,15 +199,14 @@ const styles = StyleSheet.create({
   keyboardView: {
     flex: 1,
   },
-  content: {
-    flex: 1,
+  scrollContent: {
     paddingHorizontal: 24,
-    justifyContent: 'center',
+    paddingTop: 40,
     alignItems: 'center',
   },
   header: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: 30,
   },
   logoContainer: {
     width: 80,
@@ -203,6 +242,31 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 20,
     elevation: 5,
+  },
+  roleRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 18,
+  },
+  roleButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    backgroundColor: '#F9FAFB',
+    alignItems: 'center',
+  },
+  roleButtonActive: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  roleText: {
+    fontWeight: '800',
+    color: '#374151',
+  },
+  roleTextActive: {
+    color: '#fff',
   },
   inputGroup: {
     marginBottom: 20,
@@ -262,24 +326,18 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-  registerLink: {
+  loginLink: {
     marginTop: 20,
     alignItems: 'center',
   },
-  registerText: {
+  loginText: {
     fontSize: 14,
     color: '#6B7280',
   },
-  registerTextBold: {
+  loginTextBold: {
     color: '#4F46E5',
     fontWeight: 'bold',
   },
-  footerText: {
-    marginTop: 24,
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-  },
 });
 
-export default LoginScreen;
+export default RegisterScreen;
