@@ -11,10 +11,14 @@ spring:
     password: ${DB_PASSWORD:postgres}
   jpa:
     open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
     hibernate:
       ddl-auto: update
     properties:
       hibernate:
+        boot:
+          # Avoid extra metadata calls on startup; dialect is configured explicitly above.
+          allow_jdbc_metadata_access: false
         jdbc:
           time_zone: UTC
         format_sql: true
@@ -32,9 +36,9 @@ management:
 app:
   jwt:
     # Use a long random secret in production, passed via env var.
-    secret: ${JWT_SECRET:dev-change-me}
+    # Default is intentionally long enough to boot locally without env vars.
+    secret: ${JWT_SECRET:dev-change-me-please-change-me-32-chars-min}
     issuer: smart-attendance
     access-token-ttl-minutes: 60
   upload:
     dir: ${UPLOAD_DIR:uploads}
-

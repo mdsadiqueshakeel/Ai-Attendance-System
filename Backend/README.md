@@ -14,11 +14,20 @@ Phase 1 scope:
    - `DB_URL` (JDBC URL)
    - `DB_USERNAME`
    - `DB_PASSWORD`
-   - `JWT_SECRET`
+   - `JWT_SECRET` (must be at least 32 characters)
+
+### PowerShell example (Supabase)
+
+```powershell
+$env:DB_URL="jdbc:postgresql://db.xyljztuoplzrrwdizjxh.supabase.co:5432/postgres?sslmode=require"
+$env:DB_USERNAME="postgres"
+$env:DB_PASSWORD="YOUR_PASSWORD"
+$env:JWT_SECRET="change-me-to-a-long-random-secret-32chars+"
+mvn spring-boot:run
+```
 
 2. Start:
    - `mvn spring-boot:run`
 
 Swagger UI (when running):
 - `/swagger-ui.html`
-
