@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AppProperties {
     private final Jwt jwt = new Jwt();
     private final Upload upload = new Upload();
+    private final Seed seed = new Seed();
 
     public Jwt getJwt() {
         return jwt;
@@ -13,6 +14,10 @@ public class AppProperties {
 
     public Upload getUpload() {
         return upload;
+    }
+
+    public Seed getSeed() {
+        return seed;
     }
 
     public static class Jwt {
@@ -56,5 +61,25 @@ public class AppProperties {
             this.dir = dir;
         }
     }
-}
 
+    public static class Seed {
+        private boolean enabled = false;
+        private String defaultPassword = "Password@123";
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getDefaultPassword() {
+            return defaultPassword;
+        }
+
+        public void setDefaultPassword(String defaultPassword) {
+            this.defaultPassword = defaultPassword;
+        }
+    }
+}

@@ -36,6 +36,10 @@ management:
         include: health,info
 
 app:
+  seed:
+    # Dev helper: seeds demo users/students for Postman testing.
+    enabled: ${APP_SEED_ENABLED:false}
+    default-password: ${APP_SEED_PASSWORD:Password@123}
   jwt:
     # Use a long random secret in production, passed via env var.
     # Default is intentionally long enough to boot locally without env vars.
