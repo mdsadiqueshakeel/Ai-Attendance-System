@@ -1,0 +1,12 @@
+target/
+.idea/
+.vscode/
+*.iml
+.DS_Store
+*.log
+
+# local config/secrets
+application-local.yml
+.env
+uploads/
+

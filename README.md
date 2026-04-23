@@ -1,24 +1,11 @@
-# Smart Attendance Backend (Phase 1)
+# AI Attendance System (Monorepo)
 
-Spring Boot backend for a Smart Attendance System.
+This repository contains three parts:
+- `Backend/`: Spring Boot (Java) backend API (Phase 1: no ML integration yet)
+- `frontend/`: Client app(s) (not set up in this commit)
+- `ML/`: Python ML service (to be integrated later)
 
-Phase 1 scope:
-- JWT auth (ADMIN/STUDENT)
-- Student management + face image upload (store path in DB)
-- Manual attendance marking + reports
-- PostgreSQL via JPA/Hibernate
+## Backend
 
-## Run
-
-1. Set environment variables:
-   - `DB_URL` (JDBC URL)
-   - `DB_USERNAME`
-   - `DB_PASSWORD`
-   - `JWT_SECRET`
-
-2. Start:
-   - `mvn spring-boot:run`
-
-Swagger UI (when running):
-- `/swagger-ui.html`
+See `Backend/README.md` for setup and run instructions.
 
