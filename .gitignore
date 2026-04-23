@@ -10,3 +10,5 @@ application-local.yml
 .env
 uploads/
 
+# Do not commit developer-local Spring config (often contains secrets)
+Backend/src/main/resources/application.properties
