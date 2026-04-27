@@ -1,6 +1,7 @@
 package com.smartattendance.controller;
 
 import com.smartattendance.dto.attendance.AttendanceResponse;
+import com.smartattendance.dto.me.UpdateMeRequest;
 import com.smartattendance.dto.me.MeResponse;
 import com.smartattendance.dto.me.MyStudentResponse;
 import com.smartattendance.dto.me.UpdateMyRollNumberRequest;
@@ -35,7 +36,8 @@ public class MeController {
     private final StudentService studentService;
     private final AttendanceService attendanceService;
 
-    public MeController(UserRepository userRepository, StudentService studentService, AttendanceService attendanceService) {
+    public MeController(UserRepository userRepository, StudentService studentService,
+            AttendanceService attendanceService) {
         this.userRepository = userRepository;
         this.studentService = studentService;
         this.attendanceService = attendanceService;
@@ -49,6 +51,25 @@ public class MeController {
         return new MeResponse(u.getId(), u.getName(), u.getEmail(), u.getRole());
     }
 
+    @PatchMapping
+    public MeResponse updateMe(@Valid @RequestBody UpdateMeRequest req) {
+        UUID userId = SecurityUtils.currentUserId();
+        User u = userRepository.findById(userId)
+                .orElseThrow(() -> new NotFoundException("User not found"));
+
+        // Check if email is already taken by another user
+        if (!u.getEmail().equalsIgnoreCase(req.getEmail())) {
+            if (userRepository.existsByEmailIgnoreCase(req.getEmail())) {
+                throw new com.smartattendance.exception.ConflictException("Email already taken");
+            }
+            u.setEmail(req.getEmail().toLowerCase());
+        }
+
+        u.setName(req.getName());
+        User saved = userRepository.save(u);
+        return new MeResponse(saved.getId(), saved.getName(), saved.getEmail(), saved.getRole());
+    }
+
     @GetMapping("/student")
     @PreAuthorize("hasRole('STUDENT')")
     public MyStudentResponse myStudentProfile() {
@@ -60,8 +81,7 @@ public class MeController {
     @GetMapping("/attendance")
     @PreAuthorize("hasRole('STUDENT')")
     public AttendanceResponse myAttendanceForDate(
-            @RequestParam("date") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
+            @RequestParam("date") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         UUID userId = SecurityUtils.currentUserId();
         var s = studentService.requireByUserId(userId);
         return attendanceService.getByStudentAndDate(s.getId(), date);
@@ -71,8 +91,7 @@ public class MeController {
     @PreAuthorize("hasRole('STUDENT')")
     public List<AttendanceResponse> myAttendanceRange(
             @RequestParam("from") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
-            @RequestParam("to") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to
-    ) {
+            @RequestParam("to") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         UUID userId = SecurityUtils.currentUserId();
         var s = studentService.requireByUserId(userId);
         return attendanceService.getRange(s.getId(), from, to);

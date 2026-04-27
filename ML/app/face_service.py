@@ -3,6 +3,7 @@ import json
 import numpy as np
 import face_recognition
 import cv2
+from app.utils import load_image_from_bytes
 
 class FaceService:
     def __init__(self, data_dir="data"):
@@ -44,9 +45,15 @@ class FaceService:
             for image_name in os.listdir(user_path):
                 image_path = os.path.join(user_path, image_name)
                 try:
-                    # Load image
-                    image = face_recognition.load_image_file(image_path)
+                    # Load image via normalized preprocessing
+                    with open(image_path, 'rb') as f:
+                        image_bytes = f.read()
+                    image = load_image_from_bytes(image_bytes)
                     
+                    if image is None:
+                        print(f"Failed to load image: {image_path}")
+                        continue
+
                     # Detect faces and get encodings
                     # Using 'hog' for CPU performance, 'cnn' is better but slower
                     encodings = face_recognition.face_encodings(image)
@@ -94,6 +101,7 @@ class FaceService:
         Recognizes faces in the given RGB image with strict filtering and deduplication.
         Returns a list of {"user_id": "...", "confidence": ...} sorted by confidence.
         """
+        print("Image shape:", image_rgb.shape)
         print(f"DEBUG: Recognizing against {len(self.known_encodings)} encodings")
         print(f"DEBUG: Known User IDs: {list(set(self.mapping.values()))}")
         

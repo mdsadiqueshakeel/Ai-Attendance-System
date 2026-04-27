@@ -9,6 +9,7 @@ import LoginScreen from './src/screens/LoginScreen';
 import RegisterScreen from './src/screens/RegisterScreen';
 import DashboardScreen from './src/screens/DashboardScreen';
 import CameraScreen from './src/screens/CameraScreen';
+import GalleryUploadScreen from './src/screens/GalleryUploadScreen';
 import ProcessingScreen from './src/screens/ProcessingScreen';
 import ResultScreen from './src/screens/ResultScreen';
 import StudentScreen from './src/screens/StudentScreen';
@@ -36,6 +37,7 @@ const AdminApp = () => {
     >
       <AdminStack.Screen name="Dashboard" component={DashboardScreen} />
       <AdminStack.Screen name="Camera" component={CameraScreen} />
+      <AdminStack.Screen name="GalleryUpload" component={GalleryUploadScreen} />
       <AdminStack.Screen name="Processing" component={ProcessingScreen} />
       <AdminStack.Screen name="Result" component={ResultScreen} />
       <AdminStack.Screen name="Students" component={StudentScreen} />

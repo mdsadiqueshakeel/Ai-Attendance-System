@@ -12,8 +12,9 @@ import {
   Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Mail, Lock, LogIn, Users } from 'lucide-react-native';
+import { Mail, Lock, LogIn, Users, Eye, EyeOff } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import authService from '../services/authService';
 
 const { width } = Dimensions.get('window');
@@ -22,7 +23,27 @@ const LoginScreen = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [rememberMe, setRememberMe] = useState(false);
   const [errors, setErrors] = useState({});
+
+  React.useEffect(() => {
+    loadRememberedCredentials();
+  }, []);
+
+  const loadRememberedCredentials = async () => {
+    try {
+      const savedEmail = await AsyncStorage.getItem('remembered_email');
+      const savedPassword = await AsyncStorage.getItem('remembered_password');
+      if (savedEmail) {
+        setEmail(savedEmail);
+        setRememberMe(true);
+      }
+      if (savedPassword) setPassword(savedPassword);
+    } catch (error) {
+      console.error('Error loading remembered credentials', error);
+    }
+  };
 
   const validate = () => {
     let newErrors = {};
@@ -46,6 +67,16 @@ const handleLogin = async () => {
   setLoading(true);
   try {
     const res = await authService.login(email, password);
+    
+    // Save credentials if Remember Me is checked
+    if (rememberMe) {
+      await AsyncStorage.setItem('remembered_email', email);
+      await AsyncStorage.setItem('remembered_password', password);
+    } else {
+      await AsyncStorage.removeItem('remembered_email');
+      await AsyncStorage.removeItem('remembered_password');
+    }
+
     const role = String(res?.user?.role || '').toUpperCase();
     navigation.replace(role === 'STUDENT' ? 'StudentApp' : 'AdminApp');
   } catch (error) {
@@ -107,11 +138,34 @@ const handleLogin = async () => {
                       setPassword(text);
                       if (errors.password) setErrors({ ...errors, password: null });
                     }}
-                    secureTextEntry
+                    secureTextEntry={!showPassword}
                     editable={!loading}
                   />
+                  <TouchableOpacity 
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIcon}
+                  >
+                    {showPassword ? (
+                      <EyeOff size={20} color="#94A3B8" />
+                    ) : (
+                      <Eye size={20} color="#94A3B8" />
+                    )}
+                  </TouchableOpacity>
                 </View>
                 {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+              </View>
+
+              <View style={styles.rememberMeContainer}>
+                <TouchableOpacity 
+                  style={styles.checkboxContainer} 
+                  onPress={() => setRememberMe(!rememberMe)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[styles.checkbox, rememberMe && styles.checkboxChecked]}>
+                    {rememberMe && <View style={styles.checkboxInner} />}
+                  </View>
+                  <Text style={styles.rememberMeText}>Remember Me</Text>
+                </TouchableOpacity>
               </View>
 
               <TouchableOpacity 
@@ -233,6 +287,44 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     fontSize: 16,
     color: '#111827',
+  },
+  eyeIcon: {
+    padding: 8,
+  },
+  rememberMeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  checkboxContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  checkbox: {
+    width: 20,
+    height: 20,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#E5E7EB',
+    marginRight: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+  checkboxChecked: {
+    borderColor: '#4F46E5',
+    backgroundColor: '#4F46E5',
+  },
+  checkboxInner: {
+    width: 10,
+    height: 10,
+    borderRadius: 2,
+    backgroundColor: '#fff',
+  },
+  rememberMeText: {
+    fontSize: 14,
+    color: '#4B5563',
+    fontWeight: '500',
   },
   errorText: {
     color: '#EF4444',

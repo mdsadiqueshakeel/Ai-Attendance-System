@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Users } from 'lucide-react-native';
+import { BASE_URL } from '../services/api';
 import attendanceService from '../services/attendanceService';
 
 const ProcessingScreen = ({ navigation, route }) => {
@@ -26,11 +27,16 @@ const ProcessingScreen = ({ navigation, route }) => {
       navigation.replace('Result', { result });
     } catch (err) {
       console.error('Auto attendance error:', err);
-      let errorMsg = 'Failed to process attendance. Please try again.';
-      if (err.response?.data?.message) {
+      let errorMsg = 'An unexpected error occurred. Please try again.';
+      
+      if (!err.response) {
+        // Network error (no response)
+        errorMsg = `Server not reachable at ${BASE_URL}. \n\n1. Check if backend is running\n2. Update IP in src/services/api.js\n3. Connect phone/PC to same Wi-Fi`;
+      } else if (err.response.status === 400 && err.response.data?.message?.includes('No face')) {
+        // Specifically handle "No faces" error if the backend returns it this way
+        errorMsg = 'No students detected in the image. Please try again.';
+      } else if (err.response.data?.message) {
         errorMsg = err.response.data.message;
-      } else if (err.message === 'ML service unavailable') {
-        errorMsg = 'Face recognition service is currently unavailable.';
       }
       
       Alert.alert('Error', errorMsg, [

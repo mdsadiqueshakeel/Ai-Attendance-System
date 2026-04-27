@@ -42,7 +42,7 @@ const autoMarkAttendance = async (imageFile) => {
     const formData = new FormData();
     formData.append('file', {
       uri: imageFile.uri,
-      name: 'attendance_image.jpg',
+      name: 'attendance.jpg',
       type: 'image/jpeg',
     });
 
@@ -50,7 +50,6 @@ const autoMarkAttendance = async (imageFile) => {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
-      transformRequest: (data) => data, // Ensure axios doesn't stringify FormData
     });
     return response.data;
   } catch (error) {

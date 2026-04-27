@@ -2,7 +2,12 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Alert } from 'react-native';
 
-export const BASE_URL = 'http://10.234.205.73:8080'; // Android emulator loopback (per project config)
+// 1. IMPORTANT: Replace this with your computer's actual local IP address (e.g., 192.168.1.10)
+// 2. Ensure your backend server is running and listening on 0.0.0.0 (not just localhost)
+// 3. Ensure your phone and computer are on the same Wi-Fi network
+export const BASE_URL = 'http://10.234.205.73:8080'; 
+
+console.log('Connecting to Backend at:', BASE_URL);
 
 const api = axios.create({
   baseURL: BASE_URL,

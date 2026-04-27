@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { X, Camera, RotateCw, Check, RefreshCw } from 'lucide-react-native';
+import * as ImageManipulator from 'expo-image-manipulator';
 
 const { width, height } = Dimensions.get('window');
 
@@ -49,11 +50,31 @@ const CameraScreen = ({ navigation, route }) => {
       setLoading(true);
       try {
         const photoData = await cameraRef.current.takePictureAsync({
-          quality: 0.8,
+          quality: 0.7,
+          base64: false,
           skipProcessing: false,
         });
-        setPhoto(photoData);
+        
+        // Optional: Resize if too large (>1000px)
+        let processedPhoto = photoData;
+        if (photoData.width > 1000 || photoData.height > 1000) {
+          const actions = [];
+          if (photoData.width > photoData.height) {
+            actions.push({ resize: { width: 1000 } });
+          } else {
+            actions.push({ resize: { height: 1000 } });
+          }
+          
+          processedPhoto = await ImageManipulator.manipulateAsync(
+            photoData.uri,
+            actions,
+            { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
+          );
+        }
+        
+        setPhoto(processedPhoto);
       } catch (error) {
+        console.error('Capture error:', error);
         Alert.alert('Error', 'Failed to take photo');
       } finally {
         setLoading(false);
@@ -87,7 +108,7 @@ const CameraScreen = ({ navigation, route }) => {
                 style={[styles.actionButton, styles.retakeButton]} 
                 onPress={() => setPhoto(null)}
               >
-                <RefreshCw size={24} color="#fff" />
+                <X size={24} color="#fff" />
                 <Text style={styles.actionButtonText}>Retake</Text>
               </TouchableOpacity>
 
@@ -177,7 +198,8 @@ const styles = StyleSheet.create({
   },
   preview: {
     flex: 1,
-    resizeMode: 'cover',
+    resizeMode: 'contain',
+    backgroundColor: '#000',
   },
   overlay: {
     ...StyleSheet.absoluteFillObject,

@@ -10,7 +10,7 @@ import {
   Alert
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Camera, FileText, Users, TrendingUp, ChevronRight, LogOut, CheckSquare } from 'lucide-react-native';
+import { Camera, FileText, Users, TrendingUp, ChevronRight, LogOut, CheckSquare, Image as ImageIcon } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import authService from '../services/authService';
 import { isSeedEnabled } from '../utils/devFlags';
@@ -113,6 +113,17 @@ const DashboardScreen = ({ navigation }) => {
           </TouchableOpacity>
 
           <View style={styles.grid}>
+            <TouchableOpacity 
+              style={styles.gridItem}
+              onPress={() => navigateTo('GalleryUpload')}
+            >
+              <View style={[styles.gridIconContainer, { backgroundColor: '#FDF2F8' }]}>
+                <ImageIcon size={24} color="#DB2777" />
+              </View>
+              <Text style={styles.gridTitle}>Gallery</Text>
+              <Text style={styles.gridSubtitle}>Upload photo</Text>
+            </TouchableOpacity>
+
             {isAdmin && (
               <TouchableOpacity 
                 style={styles.gridItem}

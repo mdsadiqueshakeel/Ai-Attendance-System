@@ -80,6 +80,7 @@ const RegisterScreen = ({ navigation }) => {
     }
 
     const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
       allowsEditing: true,
       aspect: [1, 1],
       quality: 0.7,

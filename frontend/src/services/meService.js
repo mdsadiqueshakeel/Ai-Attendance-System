@@ -42,11 +42,17 @@ const uploadMyImage = async (imageUri) => {
   return response.data;
 };
 
+const updateProfile = async (data) => {
+  const response = await api.patch('/api/me', data);
+  return response.data;
+};
+
 export default {
   getMe,
   getMyStudent,
   getMyAttendanceByDate,
   getMyAttendanceRange,
   uploadMyImage,
+  updateProfile,
 };
 

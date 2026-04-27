@@ -9,9 +9,10 @@ import {
   TouchableOpacity,
   View,
   Image,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { ArrowLeft, Camera, ImageIcon, Mail, User2 } from 'lucide-react-native';
+import { ArrowLeft, Camera, ImageIcon, Mail, User2, Save, X } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as ImagePicker from 'expo-image-picker';
 
@@ -25,6 +26,12 @@ const MyProfileScreen = ({ navigation, route }) => {
   const [student, setStudent] = useState(null);
   const [errorText, setErrorText] = useState('');
   const [tempImage, setTempImage] = useState(null);
+  
+  // Edit profile state
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [saving, setSaving] = useState(false);
 
   // Handle return from custom camera
   useEffect(() => {
@@ -45,6 +52,8 @@ const MyProfileScreen = ({ navigation, route }) => {
       ]);
       setMe(m);
       setStudent(s);
+      setEditName(m.name);
+      setEditEmail(m.email);
     } catch (e) {
       const status = e?.response?.status;
       if (status === 403) setErrorText('Student access is required for this screen.');
@@ -74,6 +83,7 @@ const MyProfileScreen = ({ navigation, route }) => {
           return;
         }
         result = await ImagePicker.launchCameraAsync({
+          mediaTypes: ['images'],
           allowsEditing: true,
           aspect: [1, 1],
           quality: 0.7,
@@ -85,6 +95,7 @@ const MyProfileScreen = ({ navigation, route }) => {
           return;
         }
         result = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ['images'],
           allowsEditing: true,
           aspect: [1, 1],
           quality: 0.7,
@@ -112,6 +123,28 @@ const MyProfileScreen = ({ navigation, route }) => {
       Alert.alert('Upload Failed', msg);
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleUpdateProfile = async () => {
+    if (!editName.trim() || !editEmail.trim()) {
+      Alert.alert('Error', 'Name and Email are required');
+      return;
+    }
+    setSaving(true);
+    try {
+      await meService.updateProfile({
+        name: editName,
+        email: editEmail,
+      });
+      Alert.alert('Success', 'Profile updated successfully');
+      setIsEditing(false);
+      loadData();
+    } catch (error) {
+      const msg = error?.response?.data?.detail || error?.response?.data?.message || 'Update failed';
+      Alert.alert('Update Failed', msg);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -239,14 +272,71 @@ const MyProfileScreen = ({ navigation, route }) => {
               </View>
 
               <View style={styles.card}>
-                <View style={styles.row}>
-                  <User2 size={18} color="#4F46E5" />
-                  <Text style={styles.rowText}>{me?.role || 'STUDENT'}</Text>
+                <View style={styles.cardHeader}>
+                  <Text style={styles.cardTitle}>Basic Info</Text>
+                  <TouchableOpacity 
+                    style={styles.editButton} 
+                    onPress={() => isEditing ? setIsEditing(false) : setIsEditing(true)}
+                  >
+                    {isEditing ? <X size={16} color="#EF4444" /> : <Text style={styles.editText}>Edit</Text>}
+                  </TouchableOpacity>
                 </View>
-                <View style={styles.row}>
-                  <Mail size={18} color="#4F46E5" />
-                  <Text style={styles.rowText}>{me?.email || '—'}</Text>
-                </View>
+
+                {isEditing ? (
+                  <View style={styles.editForm}>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Full Name</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={editName}
+                        onChangeText={setEditName}
+                        placeholder="Name"
+                      />
+                    </View>
+                    <View style={styles.inputGroup}>
+                      <Text style={styles.label}>Email Address</Text>
+                      <TextInput
+                        style={styles.input}
+                        value={editEmail}
+                        onChangeText={setEditEmail}
+                        placeholder="Email"
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                      />
+                    </View>
+                    <TouchableOpacity 
+                      style={styles.saveButton} 
+                      onPress={handleUpdateProfile}
+                      disabled={saving}
+                    >
+                      {saving ? (
+                        <ActivityIndicator size="small" color="#fff" />
+                      ) : (
+                        <>
+                          <Save size={18} color="#fff" />
+                          <Text style={styles.saveButtonText}>Save Changes</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <>
+                    <View style={styles.row}>
+                      <User2 size={18} color="#4F46E5" />
+                      <View>
+                        <Text style={styles.rowLabel}>Role</Text>
+                        <Text style={styles.rowText}>{me?.role || 'STUDENT'}</Text>
+                      </View>
+                    </View>
+                    <View style={styles.row}>
+                      <Mail size={18} color="#4F46E5" />
+                      <View>
+                        <Text style={styles.rowLabel}>Email</Text>
+                        <Text style={styles.rowText}>{me?.email || '—'}</Text>
+                      </View>
+                    </View>
+                  </>
+                )}
               </View>
             </>
           )}
@@ -401,6 +491,71 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#111827',
     fontWeight: '700',
+  },
+  rowLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '600',
+    marginBottom: 1,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 4,
+  },
+  cardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  editButton: {
+    padding: 4,
+  },
+  editText: {
+    color: '#4F46E5',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  editForm: {
+    gap: 16,
+    paddingHorizontal: 4,
+  },
+  inputGroup: {
+    gap: 6,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#4B5563',
+    marginLeft: 2,
+  },
+  input: {
+    backgroundColor: '#F9FAFB',
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#111827',
+    fontWeight: '600',
+  },
+  saveButton: {
+    backgroundColor: '#4F46E5',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    gap: 8,
+    marginTop: 8,
+  },
+  saveButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
   previewBody: {
     flex: 1,

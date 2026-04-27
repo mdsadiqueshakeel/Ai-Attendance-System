@@ -23,7 +23,7 @@ import java.util.List;
  * This runner is OFF by default. Enable with: app.seed.enabled=true
  */
 @Component
-@ConditionalOnProperty(prefix = "app.seed", name = "enabled", havingValue = "false")
+@ConditionalOnProperty(prefix = "app.seed", name = "enabled", havingValue = "true")
 public class DevSeedRunner implements ApplicationRunner {
     private static final Logger log = LoggerFactory.getLogger(DevSeedRunner.class);
 

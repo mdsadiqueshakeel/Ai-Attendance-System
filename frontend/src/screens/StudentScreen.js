@@ -11,8 +11,9 @@ import {
   RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Plus, Search, ArrowLeft, User } from 'lucide-react-native';
+import { Plus, Search, ArrowLeft, User, Camera } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import studentService from '../services/studentService';
 import authService from '../services/authService';
 import AuthImage from '../components/AuthImage';
@@ -23,6 +24,7 @@ const StudentScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [uploadingId, setUploadingId] = useState(null);
 
   useEffect(() => {
     checkRole();
@@ -54,6 +56,42 @@ const StudentScreen = ({ navigation }) => {
     } catch (error) {
     } finally {
       setRefreshing(false);
+    }
+  };
+
+  const handlePickImage = async (studentId) => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        alert('Permission Denied', 'We need camera roll permissions to upload an image.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.7,
+      });
+
+      if (!result.canceled && result.assets && result.assets.length > 0) {
+        uploadStudentPhoto(studentId, result.assets[0].uri);
+      }
+    } catch (error) {
+      alert('Error picking image');
+    }
+  };
+
+  const uploadStudentPhoto = async (studentId, uri) => {
+    setUploadingId(studentId);
+    try {
+      await studentService.uploadStudentImage(studentId, uri);
+      alert('Photo updated successfully');
+      fetchStudents();
+    } catch (error) {
+      alert('Failed to upload photo');
+    } finally {
+      setUploadingId(null);
     }
   };
 
@@ -142,8 +180,23 @@ const StudentScreen = ({ navigation }) => {
                     </View>
                     <View style={styles.studentInfo}>
                       <Text style={styles.studentName}>{student.name}</Text>
-                      <Text style={styles.studentRoll}>Roll: {student.rollNumber}</Text>
+                      <Text style={styles.studentRoll}>Roll: {student.rollNumber || 'Not set'}</Text>
                     </View>
+                    
+                    {isAdmin && (
+                      <TouchableOpacity 
+                        style={styles.photoButton} 
+                        onPress={() => handlePickImage(student.studentId || student.id)}
+                        disabled={uploadingId === (student.studentId || student.id)}
+                      >
+                        {uploadingId === (student.studentId || student.id) ? (
+                          <ActivityIndicator size="small" color="#4F46E5" />
+                        ) : (
+                          <Camera size={20} color="#4F46E5" />
+                        )}
+                      </TouchableOpacity>
+                    )}
+
                     <View style={styles.attendanceInfo}>
                       <Text style={styles.attendanceValue}>{student.attendancePercentage || 0}%</Text>
                       <Text style={styles.attendanceLabel}>Attendance</Text>
@@ -286,8 +339,18 @@ const styles = StyleSheet.create({
     marginBottom: 2,
   },
   attendanceLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
+    fontSize: 10,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  photoButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#EEF2FF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
   },
   fab: {
     position: 'absolute',
