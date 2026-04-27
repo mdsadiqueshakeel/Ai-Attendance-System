@@ -5,13 +5,13 @@ import {
   TextInput, 
   TouchableOpacity, 
   StyleSheet, 
-  SafeAreaView, 
   KeyboardAvoidingView, 
   Platform,
   Dimensions,
   ActivityIndicator,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Mail, Lock, LogIn, Users } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import authService from '../services/authService';

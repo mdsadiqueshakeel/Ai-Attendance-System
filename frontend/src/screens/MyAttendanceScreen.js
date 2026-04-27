@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -9,6 +8,7 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
@@ -149,11 +149,11 @@ const MyAttendanceScreen = ({ navigation }) => {
                   Total: {rangeSummary.total} • Present: {rangeSummary.presentCount} • Absent: {rangeSummary.absentCount}
                 </Text>
                 <View style={styles.list}>
-                  {range.map((r) => {
+                  {range.map((r, index) => {
                     const s = String(r?.status || 'ABSENT').toUpperCase();
                     const p = s === 'PRESENT';
                     return (
-                      <View key={`${r.studentId}-${r.date}`} style={styles.entryRow}>
+                      <View key={r.id || `${r.studentId}-${r.date}` || index} style={styles.entryRow}>
                         <Text style={styles.entryDate}>{String(r?.date || '—')}</Text>
                         <Text style={[styles.entryBadge, p ? styles.badgePresent : styles.badgeAbsent]}>
                           {p ? 'Present' : 'Absent'}

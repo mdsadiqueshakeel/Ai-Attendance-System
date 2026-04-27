@@ -1,6 +1,19 @@
-face_recognition
+fastapi
+uvicorn
+face-recognition
+dlib-bin
 opencv-python
 numpy
-fastapi
+pillow
 python-multipart
-uvicorn
+
+
+# To install the dependencies, run the following command in your terminal:
+#rm -rf venv
+#py -3.11 -m venv venv
+#source venv/Scripts/activate
+#pip install dlib-bin
+#pip install face-recognition --no-deps
+#pip install face-recognition-models numpy pillow click
+#pip install fastapi uvicorn python-multipart opencv-python
+#$ python -m uvicorn app.main:app --reload

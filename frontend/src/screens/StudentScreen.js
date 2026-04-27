@@ -4,14 +4,14 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  SafeAreaView, 
   ScrollView,
   TextInput,
   StatusBar,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { Plus, Search, ArrowLeft, UserCircle } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Plus, Search, ArrowLeft, User } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import studentService from '../services/studentService';
 import authService from '../services/authService';
@@ -113,7 +113,7 @@ const StudentScreen = ({ navigation }) => {
           ) : (
             <View style={styles.list}>
               {filteredStudents.length > 0 ? (
-                filteredStudents.map((student) => {
+                filteredStudents.map((student, index) => {
                   const Card = isAdmin ? TouchableOpacity : View;
                   const cardProps = isAdmin
                     ? {
@@ -129,7 +129,7 @@ const StudentScreen = ({ navigation }) => {
                     : {};
                   return (
                   <Card
-                    key={student.id}
+                    key={student.id || index}
                     style={styles.studentCard}
                     {...cardProps}
                   >
@@ -137,7 +137,7 @@ const StudentScreen = ({ navigation }) => {
                       {student.imageUrl ? (
                         <AuthImage uri={student.imageUrl} style={styles.avatarImage} />
                       ) : (
-                        <UserCircle size={40} color="#94A3B8" />
+                        <User size={24} color="#94A3B8" />
                       )}
                     </View>
                     <View style={styles.studentInfo}>
@@ -252,7 +252,7 @@ const styles = StyleSheet.create({
   avatarContainer: {
     width: 56,
     height: 56,
-    backgroundColor: '#EEF2FF',
+    backgroundColor: '#F3F4F6',
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',

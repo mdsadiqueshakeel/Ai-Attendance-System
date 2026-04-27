@@ -4,17 +4,23 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  SafeAreaView, 
   Dimensions,
-  Alert
+  Alert,
+  Image,
+  ActivityIndicator
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import { X, Camera } from 'lucide-react-native';
+import { X, Camera, RotateCw, Check, RefreshCw } from 'lucide-react-native';
 
 const { width, height } = Dimensions.get('window');
 
-const CameraScreen = ({ navigation }) => {
+const CameraScreen = ({ navigation, route }) => {
+  const { returnScreen = 'Processing' } = route.params || {};
   const [permission, requestPermission] = useCameraPermissions();
+  const [facing, setFacing] = useState('back');
+  const [photo, setPhoto] = useState(null);
+  const [loading, setLoading] = useState(false);
   const cameraRef = useRef(null);
 
   useEffect(() => {
@@ -24,15 +30,13 @@ const CameraScreen = ({ navigation }) => {
   }, [permission]);
 
   if (!permission) {
-    // Camera permissions are still loading.
-    return <View />;
+    return <View style={styles.container} />;
   }
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet.
     return (
       <View style={styles.container}>
-        <Text style={{ textAlign: 'center' }}>We need your permission to show the camera</Text>
+        <Text style={styles.permissionText}>We need your permission to show the camera</Text>
         <TouchableOpacity onPress={requestPermission} style={styles.permissionButton}>
           <Text style={styles.permissionButtonText}>Grant Permission</Text>
         </TouchableOpacity>
@@ -41,31 +45,94 @@ const CameraScreen = ({ navigation }) => {
   }
 
   const takePicture = async () => {
-    if (cameraRef.current) {
+    if (cameraRef.current && !loading) {
+      setLoading(true);
       try {
-        const photo = await cameraRef.current.takePictureAsync();
-        // Pass the photo to the Processing screen
-        navigation.navigate('Processing', { photoUri: photo.uri });
+        const photoData = await cameraRef.current.takePictureAsync({
+          quality: 0.8,
+          skipProcessing: false,
+        });
+        setPhoto(photoData);
       } catch (error) {
         Alert.alert('Error', 'Failed to take photo');
+      } finally {
+        setLoading(false);
       }
     }
   };
 
+  const toggleFacing = () => {
+    setFacing(prev => (prev === 'back' ? 'front' : 'back'));
+  };
+
+  const confirmPhoto = () => {
+    if (photo) {
+      navigation.navigate(returnScreen, { photoUri: photo.uri });
+    }
+  };
+
+  if (photo) {
+    return (
+      <View style={styles.container}>
+        <Image source={{ uri: photo.uri }} style={styles.preview} />
+        
+        <SafeAreaView style={styles.overlay}>
+          <View style={styles.topBar}>
+            <Text style={styles.previewTitle}>Preview Photo</Text>
+          </View>
+
+          <View style={styles.bottomBar}>
+            <View style={styles.actionRow}>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.retakeButton]} 
+                onPress={() => setPhoto(null)}
+              >
+                <RefreshCw size={24} color="#fff" />
+                <Text style={styles.actionButtonText}>Retake</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.confirmButton]} 
+                onPress={confirmPhoto}
+              >
+                <Check size={24} color="#fff" />
+                <Text style={styles.actionButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
-      <CameraView style={styles.camera} ref={cameraRef}>
+      <View style={styles.cameraContainer}>
+        <CameraView 
+          style={styles.camera} 
+          ref={cameraRef} 
+          facing={facing}
+        />
+        
         <SafeAreaView style={styles.overlay}>
           <View style={styles.topBar}>
             <TouchableOpacity 
               onPress={() => navigation.goBack()}
-              style={styles.closeButton}
+              style={styles.iconButton}
             >
               <X size={24} color="#fff" />
             </TouchableOpacity>
+            
             <View style={styles.instructionBadge}>
               <Text style={styles.instructionText}>Position students in frame</Text>
             </View>
+
+            <TouchableOpacity 
+              onPress={toggleFacing}
+              style={styles.iconButton}
+            >
+              <RotateCw size={24} color="#fff" />
+            </TouchableOpacity>
           </View>
 
           <View style={styles.guideFrame}>
@@ -80,13 +147,18 @@ const CameraScreen = ({ navigation }) => {
               style={styles.captureButtonOuter}
               onPress={takePicture}
               activeOpacity={0.8}
+              disabled={loading}
             >
-              <View style={styles.captureButtonInner} />
+              <View style={[styles.captureButtonInner, loading && styles.captureLoading]}>
+                {loading && <ActivityIndicator color="#4F46E5" />}
+              </View>
             </TouchableOpacity>
-            <Text style={styles.captureLabel}>Tap to capture attendance</Text>
+            <Text style={styles.captureLabel}>
+              {loading ? 'Processing...' : 'Tap to capture attendance'}
+            </Text>
           </View>
         </SafeAreaView>
-      </CameraView>
+      </View>
     </View>
   );
 };
@@ -96,21 +168,30 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#000',
   },
+  cameraContainer: {
+    flex: 1,
+    position: 'relative',
+  },
   camera: {
     flex: 1,
   },
-  overlay: {
+  preview: {
     flex: 1,
+    resizeMode: 'cover',
+  },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'space-between',
+    zIndex: 10,
   },
   topBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 24,
-    paddingTop: 20,
+    paddingHorizontal: 20,
+    paddingTop: 10,
   },
-  closeButton: {
+  iconButton: {
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
     padding: 12,
     borderRadius: 30,
@@ -124,19 +205,29 @@ const styles = StyleSheet.create({
   instructionText: {
     color: '#fff',
     fontSize: 14,
+    fontWeight: '600',
+  },
+  previewTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
+    textAlign: 'center',
+    flex: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 10,
   },
   guideFrame: {
     flex: 1,
     margin: 40,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.3)',
+    borderColor: 'rgba(255, 255, 255, 0.2)',
     borderRadius: 24,
-    position: 'relative',
   },
   corner: {
     position: 'absolute',
-    width: 32,
-    height: 32,
+    width: 30,
+    height: 30,
     borderColor: '#4F46E5',
   },
   topLeft: {
@@ -169,41 +260,75 @@ const styles = StyleSheet.create({
   },
   bottomBar: {
     alignItems: 'center',
-    paddingBottom: 40,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
   },
   captureButtonOuter: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: '#fff',
-    borderWidth: 4,
-    borderColor: '#4F46E5',
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255, 255, 255, 0.3)',
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 10,
   },
   captureButtonInner: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
-    backgroundColor: '#4F46E5',
+    width: 66,
+    height: 66,
+    borderRadius: 33,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  captureLoading: {
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
   },
   captureLabel: {
     color: '#fff',
-    marginTop: 20,
+    marginTop: 15,
     fontSize: 14,
-    opacity: 0.8,
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.5)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 5,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 20,
+    width: '100%',
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 16,
+    gap: 10,
+  },
+  retakeButton: {
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
+  },
+  confirmButton: {
+    backgroundColor: '#4F46E5',
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  permissionText: {
+    color: '#fff',
+    textAlign: 'center',
+    marginBottom: 20,
+    fontSize: 16,
   },
   permissionButton: {
     backgroundColor: '#4F46E5',
-    padding: 16,
+    paddingHorizontal: 24,
+    paddingVertical: 12,
     borderRadius: 12,
-    marginTop: 20,
-    alignSelf: 'center',
   },
   permissionButtonText: {
     color: '#fff',

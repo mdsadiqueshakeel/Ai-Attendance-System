@@ -122,6 +122,7 @@ python -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn app.main:app --reload
 ```
 
 ### 2. Backend (Java)
@@ -160,7 +161,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 ## 👤 Author
-**Saad**
+**Sadique Shakeel**
 *   Engineering Student | Software Developer
-*   [GitHub](https://github.com/yourusername)
-*   [LinkedIn](https://linkedin.com/in/yourusername)
+*   [GitHub](https://github.com/mdsadiqueshakeel)
+*   [LinkedIn](https://www.linkedin.com/in/sadique-shakeel-a5bb29266)

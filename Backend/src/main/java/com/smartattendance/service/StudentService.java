@@ -13,9 +13,17 @@ import com.smartattendance.repository.StudentRepository;
 import com.smartattendance.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import net.coobird.thumbnailator.Thumbnails;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -34,11 +42,13 @@ public class StudentService {
     private final StudentRepository studentRepository;
     private final UserRepository userRepository;
     private final AppProperties props;
+    private final RestTemplate restTemplate;
 
     public StudentService(StudentRepository studentRepository, UserRepository userRepository, AppProperties props) {
         this.studentRepository = studentRepository;
         this.userRepository = userRepository;
         this.props = props;
+        this.restTemplate = new RestTemplate();
     }
 
     @Transactional
@@ -159,7 +169,7 @@ public class StudentService {
         }
 
         Path root = Path.of(props.getUpload().getDir()).toAbsolutePath().normalize();
-        Path studentDir = root.resolve("students").resolve(student.getId().toString());
+        Path studentDir = root.resolve("students").resolve(student.getUser().getId().toString());
         try {
             Files.createDirectories(studentDir);
             String filename = "face_" + Instant.now().toEpochMilli() + ".jpg";
@@ -180,11 +190,37 @@ public class StudentService {
 
             String relative = root.relativize(dest).toString().replace("\\", "/");
             student.setImageUrl("/files/" + relative);
-            return studentRepository.save(student);
+            Student saved = studentRepository.save(student);
+
+            // Register face with ML service using User ID (UUID)
+            registerFaceWithMlService(student.getUser().getId().toString(), dest.toFile());
+
+            return saved;
         } catch (BadRequestException e) {
             throw e;
         } catch (Exception e) {
             throw new RuntimeException("Failed to upload image", e);
+        }
+    }
+
+    private void registerFaceWithMlService(String userId, File imageFile) {
+        try {
+            String url = props.getMl().getServiceUrl() + "/register-face";
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+            MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+            body.add("user_id", userId);
+            body.add("file", new FileSystemResource(imageFile));
+
+            HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+
+            restTemplate.postForEntity(url, requestEntity, String.class);
+        } catch (Exception e) {
+            // We log the error but don't fail the whole transaction if ML is down
+            // although the user might not be recognizable until they re-upload.
+            System.err.println("Failed to register face with ML service: " + e.getMessage());
         }
     }
 

@@ -9,8 +9,6 @@ import com.smartattendance.dto.attendance.StudentAttendanceEntry;
 import com.smartattendance.entity.Attendance;
 import com.smartattendance.entity.AttendanceStatus;
 import com.smartattendance.entity.Student;
-import com.smartattendance.entity.User;
-import com.smartattendance.exception.NotFoundException;
 import com.smartattendance.repository.AttendanceRepository;
 import com.smartattendance.repository.StudentRepository;
 import jakarta.transaction.Transactional;
@@ -53,7 +51,7 @@ public class AttendanceService {
     @Transactional
     public AttendanceResponse mark(MarkAttendanceRequest req) {
         Student student = studentRepository.findById(req.getStudentId())
-                .orElseThrow(() -> new NotFoundException("Student not found"));
+                .orElseThrow(() -> new com.smartattendance.exception.NotFoundException("Student not found"));
 
         Attendance a = attendanceRepository.findByStudent_IdAndDate(student.getId(), req.getDate())
                 .orElseGet(() -> {
@@ -69,15 +67,14 @@ public class AttendanceService {
     }
 
     public AttendanceResponse getByStudentAndDate(UUID studentId, LocalDate date) {
-        // If there is no row, we treat as ABSENT (unmarked) for reporting convenience.
         return attendanceRepository.findByStudent_IdAndDate(studentId, date)
                 .map(a -> new AttendanceResponse(a.getId(), a.getStudent().getId(), a.getDate(), a.getStatus(), true))
                 .orElseGet(() -> new AttendanceResponse(null, studentId, date, AttendanceStatus.ABSENT, false));
     }
 
     public ClassReportResponse classReport(LocalDate date) {
-        List<Student> students = studentRepository.findAll(); // entity graph includes user
-        List<Attendance> records = attendanceRepository.findByDate(date); // entity graph includes student+user
+        List<Student> students = studentRepository.findAll();
+        List<Attendance> records = attendanceRepository.findByDate(date);
 
         Map<UUID, Attendance> byStudent = new HashMap<>();
         for (Attendance a : records) {
@@ -96,7 +93,7 @@ public class AttendanceService {
                 })
                 .sorted(Comparator.comparing(StudentAttendanceEntry::getRollNumber,
                         Comparator.nullsLast(String::compareToIgnoreCase)))
-                .toList();
+                .collect(Collectors.toList());
 
         int present = (int) entries.stream().filter(e -> e.getStatus() == AttendanceStatus.PRESENT).count();
         int total = entries.size();
@@ -113,16 +110,12 @@ public class AttendanceService {
             throw new IllegalArgumentException("to must be on/after from");
         }
 
-        // Ensure student exists (better error message than returning empty list)
-        studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found"));
+        studentRepository.findById(studentId).orElseThrow(() -> new com.smartattendance.exception.NotFoundException("Student not found"));
 
-        List<Attendance> records = attendanceRepository.findByStudent_IdAndDateBetweenOrderByDateAsc(studentId, from,
-                to);
-        List<AttendanceResponse> out = new ArrayList<>(records.size());
-        for (Attendance a : records) {
-            out.add(new AttendanceResponse(a.getId(), a.getStudent().getId(), a.getDate(), a.getStatus(), true));
-        }
-        return out;
+        List<Attendance> records = attendanceRepository.findByStudent_IdAndDateBetweenOrderByDateAsc(studentId, from, to);
+        return records.stream()
+                .map(a -> new AttendanceResponse(a.getId(), a.getStudent().getId(), a.getDate(), a.getStatus(), true))
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -136,25 +129,40 @@ public class AttendanceService {
         try {
             recognizedUsers = callMlService(file);
         } catch (Exception e) {
-            throw new RuntimeException("ML service unavailable", e);
+            throw new RuntimeException("ML service unavailable or error occurred", e);
         }
 
-        Set<String> presentUserIds = recognizedUsers.stream()
+        // 2. Filter by confidence >= 0.6
+        Set<String> presentUserIds = recognizedUsers == null ? Set.of() : recognizedUsers.stream()
+                .filter(m -> {
+                    Object conf = m.get("confidence");
+                    if (conf instanceof Number) {
+                        return ((Number) conf).doubleValue() >= 0.6;
+                    }
+                    return false;
+                })
                 .map(m -> (String) m.get("user_id"))
                 .collect(Collectors.toSet());
 
-        // 2. Fetch all students
-        List<Student> allStudents = studentRepository.findAll();
+        // 3. Fetch all ACTIVE students (must have roll number and image)
+        List<Student> allStudents = studentRepository.findAll().stream()
+                .filter(s -> s.getRollNumber() != null && !s.getRollNumber().startsWith("TEMP_"))
+                .filter(s -> s.getImageUrl() != null)
+                .toList();
+        
+        if (allStudents.isEmpty()) {
+            return new AutoAttendanceResponse(LocalDate.now(), 0, 0, 0, List.of());
+        }
+
         LocalDate today = LocalDate.now();
 
-        // 3. Mark attendance
+        // 4. Mark attendance
         List<StudentAttendanceEntry> details = new ArrayList<>();
         int presentCount = 0;
 
         for (Student s : allStudents) {
             String userIdStr = s.getUser().getId().toString();
-            AttendanceStatus status = presentUserIds.contains(userIdStr) ? AttendanceStatus.PRESENT
-                    : AttendanceStatus.ABSENT;
+            AttendanceStatus status = presentUserIds.contains(userIdStr) ? AttendanceStatus.PRESENT : AttendanceStatus.ABSENT;
 
             Attendance a = attendanceRepository.findByStudent_IdAndDate(s.getId(), today)
                     .orElseGet(() -> {

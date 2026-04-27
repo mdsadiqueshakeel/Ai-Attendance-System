@@ -4,9 +4,9 @@ import {
   Text, 
   StyleSheet, 
   ActivityIndicator, 
-  SafeAreaView,
   Alert 
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Users } from 'lucide-react-native';
 import attendanceService from '../services/attendanceService';
 

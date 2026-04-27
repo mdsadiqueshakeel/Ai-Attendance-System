@@ -36,8 +36,7 @@ public class GlobalExceptionHandler {
                 "Bad Request",
                 "Validation failed",
                 req.getRequestURI(),
-                fieldErrors
-        );
+                fieldErrors);
         return ResponseEntity.badRequest().body(body);
     }
 
@@ -48,8 +47,7 @@ public class GlobalExceptionHandler {
                 "Bad Request",
                 "Invalid request body",
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.badRequest().body(body);
     }
 
@@ -62,10 +60,9 @@ public class GlobalExceptionHandler {
         ApiError body = new ApiError(
                 HttpStatus.BAD_REQUEST.value(),
                 "Bad Request",
-                "Invalid request parameters",
+                ex.getMessage(),
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.badRequest().body(body);
     }
 
@@ -76,8 +73,7 @@ public class GlobalExceptionHandler {
                 "Unsupported Media Type",
                 "Content-Type not supported",
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.UNSUPPORTED_MEDIA_TYPE).body(body);
     }
 
@@ -88,8 +84,7 @@ public class GlobalExceptionHandler {
                 "Method Not Allowed",
                 "HTTP method not allowed",
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(body);
     }
 
@@ -100,8 +95,7 @@ public class GlobalExceptionHandler {
                 "Unauthorized",
                 ex.getMessage(),
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(body);
     }
 
@@ -112,8 +106,7 @@ public class GlobalExceptionHandler {
                 "Conflict",
                 ex.getMessage(),
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
@@ -125,9 +118,9 @@ public class GlobalExceptionHandler {
                 "Conflict",
                 "Request violates a database constraint (possibly duplicate or missing reference)",
                 req.getRequestURI(),
-                null
-        );
-        log.warn("DataIntegrityViolation on {}: {}", req.getRequestURI(), ex.getMostSpecificCause() == null ? ex.getMessage() : ex.getMostSpecificCause().getMessage());
+                null);
+        log.warn("DataIntegrityViolation on {}: {}", req.getRequestURI(),
+                ex.getMostSpecificCause() == null ? ex.getMessage() : ex.getMostSpecificCause().getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT).body(body);
     }
 
@@ -138,8 +131,7 @@ public class GlobalExceptionHandler {
                 "Payload Too Large",
                 "Uploaded file is too large",
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE).body(body);
     }
 
@@ -150,8 +142,7 @@ public class GlobalExceptionHandler {
                 "Not Found",
                 ex.getMessage(),
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
@@ -162,8 +153,7 @@ public class GlobalExceptionHandler {
                 "Bad Request",
                 ex.getMessage(),
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
     }
 
@@ -175,8 +165,7 @@ public class GlobalExceptionHandler {
                 "Internal Server Error",
                 "Something went wrong",
                 req.getRequestURI(),
-                null
-        );
+                null);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }

@@ -23,6 +23,8 @@ public class RegisterRequest {
     @NotNull
     private UserRole role;
 
+    private String rollNumber;
+
     public String getName() {
         return name;
     }
@@ -54,5 +56,12 @@ public class RegisterRequest {
     public void setRole(UserRole role) {
         this.role = role;
     }
-}
 
+    public String getRollNumber() {
+        return rollNumber;
+    }
+
+    public void setRollNumber(String rollNumber) {
+        this.rollNumber = rollNumber;
+    }
+}

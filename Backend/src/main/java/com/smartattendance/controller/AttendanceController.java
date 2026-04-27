@@ -8,15 +8,10 @@ import com.smartattendance.service.AttendanceService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotNull;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RequestPart;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
@@ -52,9 +47,16 @@ public class AttendanceController {
         return attendanceService.classReport(date);
     }
 
-    @PostMapping(path = "/auto", consumes = "multipart/form-data")
+    @PostMapping(value = "/auto", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
-    public AutoAttendanceResponse autoAttendance(@RequestPart("file") MultipartFile file) {
-        return attendanceService.autoAttendance(file);
+    public ResponseEntity<?> autoAttendance(@RequestPart("file") MultipartFile file) {
+        System.out.println("DEBUG: Entering autoAttendance endpoint");
+        if (file == null || file.isEmpty()) {
+            return ResponseEntity.badRequest().body("File is missing or empty");
+        }
+
+        System.out.println("File received: " + file.getOriginalFilename() + " (" + file.getSize() + " bytes)");
+        AutoAttendanceResponse response = attendanceService.autoAttendance(file);
+        return ResponseEntity.ok(response);
     }
 }

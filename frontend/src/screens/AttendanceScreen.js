@@ -4,17 +4,18 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  SafeAreaView, 
   ScrollView,
   ActivityIndicator,
   Alert,
   Switch,
   Platform
 } from 'react-native';
-import { ArrowLeft, Save } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, Save, User } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import attendanceService from '../services/attendanceService';
 import DatePickerField from '../components/DatePickerField';
+import AuthImage from '../components/AuthImage';
 import { getTodayYMD } from '../utils/dateUtils';
 
 const AttendanceScreen = ({ navigation }) => {
@@ -141,11 +142,18 @@ const AttendanceScreen = ({ navigation }) => {
               </View>
             ) : (
               <View style={styles.list}>
-                {entries.map((entry) => {
+                {entries.map((entry, index) => {
                   const isPresent = !!attendance[entry.studentId];
                   const marked = !!entry.marked;
                   return (
-                    <View key={entry.studentId} style={styles.attendanceItem}>
+                    <View key={entry.studentId || index} style={styles.attendanceItem}>
+                      <View style={styles.avatarContainer}>
+                        {entry.imageUrl ? (
+                          <AuthImage uri={entry.imageUrl} style={styles.avatarImage} />
+                        ) : (
+                          <User size={20} color="#94A3B8" />
+                        )}
+                      </View>
                       <View style={styles.studentInfo}>
                         <Text style={styles.studentName}>{entry.name}</Text>
                         <Text style={styles.studentRoll}>Roll: {entry.rollNumber}</Text>
@@ -254,8 +262,22 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 2,
   },
+  avatarContainer: {
+    width: 48,
+    height: 48,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+  },
   studentInfo: {
     flex: 1,
+    marginLeft: 12,
   },
   studentName: {
     fontSize: 16,

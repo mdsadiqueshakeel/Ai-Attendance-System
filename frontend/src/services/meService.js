@@ -26,5 +26,27 @@ const getMyAttendanceRange = async (from, to) => {
   return response.data;
 };
 
-export default { getMe, getMyStudent, getMyAttendanceByDate, getMyAttendanceRange };
+const uploadMyImage = async (imageUri) => {
+  const formData = new FormData();
+  formData.append('file', {
+    uri: imageUri,
+    name: 'profile.jpg',
+    type: 'image/jpeg',
+  });
+
+  const response = await api.post('/api/me/student/image', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+  return response.data;
+};
+
+export default {
+  getMe,
+  getMyStudent,
+  getMyAttendanceByDate,
+  getMyAttendanceRange,
+  uploadMyImage,
+};
 

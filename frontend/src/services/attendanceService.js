@@ -50,6 +50,7 @@ const autoMarkAttendance = async (imageFile) => {
       headers: {
         'Content-Type': 'multipart/form-data',
       },
+      transformRequest: (data) => data, // Ensure axios doesn't stringify FormData
     });
     return response.data;
   } catch (error) {

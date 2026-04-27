@@ -5,22 +5,27 @@ import {
   TextInput, 
   TouchableOpacity, 
   StyleSheet, 
-  SafeAreaView, 
   KeyboardAvoidingView, 
   Platform,
   ActivityIndicator,
   Alert,
-  ScrollView
+  ScrollView,
+  Image
 } from 'react-native';
-import { Mail, Lock, User, LogIn, Users } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Mail, Lock, User, LogIn, Users, Hash, Camera as CameraIcon, Image as ImageIcon } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import authService from '../services/authService';
+import studentService from '../services/studentService';
 
 const RegisterScreen = ({ navigation }) => {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('STUDENT');
+  const [rollNumber, setRollNumber] = useState('');
+  const [imageUri, setImageUri] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
 
@@ -37,8 +42,53 @@ const RegisterScreen = ({ navigation }) => {
     } else if (password.length < 8) {
       newErrors.password = 'Password must be at least 8 characters';
     }
+    
+    if (role === 'STUDENT') {
+      if (!rollNumber) newErrors.rollNumber = 'Roll number is required';
+      if (!imageUri) newErrors.image = 'Face image is required';
+    }
+    
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
+  };
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'We need camera roll permissions to upload an image.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+      if (errors.image) setErrors({ ...errors, image: null });
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permission Denied', 'We need camera permissions to take a photo.');
+      return;
+    }
+
+    const result = await ImagePicker.launchCameraAsync({
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (!result.canceled) {
+      setImageUri(result.assets[0].uri);
+      if (errors.image) setErrors({ ...errors, image: null });
+    }
   };
 
   const handleRegister = async () => {
@@ -46,12 +96,28 @@ const RegisterScreen = ({ navigation }) => {
 
     setLoading(true);
     try {
-      await authService.register({ name, email, password, role });
+      const response = await authService.register({ 
+        name, 
+        email, 
+        password, 
+        role,
+        rollNumber: role === 'STUDENT' ? rollNumber : null
+      });
+
+      if (role === 'STUDENT' && imageUri && response.user.studentId) {
+        try {
+          await studentService.uploadStudentImage(response.user.studentId, imageUri);
+        } catch (uploadError) {
+          console.error("Image upload failed:", uploadError);
+          Alert.alert('Warning', 'Account created but face image upload failed. You can upload it later from your profile.');
+        }
+      }
+
       Alert.alert('Success', 'Registration successful. Please login.', [
         { text: 'OK', onPress: () => navigation.navigate('Login') }
       ]);
     } catch (error) {
-      // Error is handled globally
+      // Error is handled globally or shown in UI
     } finally {
       setLoading(false);
     }
@@ -156,6 +222,62 @@ const RegisterScreen = ({ navigation }) => {
                 </View>
                 {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
               </View>
+
+              {role === 'STUDENT' && (
+                <>
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Roll Number</Text>
+                    <View style={[styles.inputWrapper, errors.rollNumber && styles.inputError]}>
+                      <Hash size={20} color="#94A3B8" style={styles.inputIcon} />
+                      <TextInput
+                        style={styles.input}
+                        placeholder="CS2021001"
+                        value={rollNumber}
+                        onChangeText={(text) => {
+                          setRollNumber(text);
+                          if (errors.rollNumber) setErrors({ ...errors, rollNumber: null });
+                        }}
+                        editable={!loading}
+                      />
+                    </View>
+                    {errors.rollNumber && <Text style={styles.errorText}>{errors.rollNumber}</Text>}
+                  </View>
+
+                  <View style={styles.inputGroup}>
+                    <Text style={styles.label}>Face Image (Required for Attendance)</Text>
+                    <View style={styles.imagePickerRow}>
+                      <TouchableOpacity 
+                        style={[styles.imagePickerButton, errors.image && styles.inputError]} 
+                        onPress={pickImage}
+                        disabled={loading}
+                      >
+                        <ImageIcon size={20} color="#4F46E5" />
+                        <Text style={styles.imagePickerText}>Gallery</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity 
+                        style={[styles.imagePickerButton, errors.image && styles.inputError]} 
+                        onPress={takePhoto}
+                        disabled={loading}
+                      >
+                        <CameraIcon size={20} color="#4F46E5" />
+                        <Text style={styles.imagePickerText}>Camera</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {imageUri && (
+                      <View style={styles.previewContainer}>
+                        <Image source={{ uri: imageUri }} style={styles.imagePreview} />
+                        <TouchableOpacity 
+                          style={styles.removeImage} 
+                          onPress={() => setImageUri(null)}
+                        >
+                          <Text style={styles.removeImageText}>Remove</Text>
+                        </TouchableOpacity>
+                      </View>
+                    )}
+                    {errors.image && <Text style={styles.errorText}>{errors.image}</Text>}
+                  </View>
+                </>
+              )}
 
               <TouchableOpacity 
                 style={[styles.button, loading && styles.buttonDisabled]} 
@@ -303,6 +425,51 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
     marginLeft: 4,
+  },
+  imagePickerRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginBottom: 12,
+  },
+  imagePickerButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 12,
+    gap: 8,
+  },
+  imagePickerText: {
+    color: '#4F46E5',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  previewContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 12,
+  },
+  imagePreview: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+  },
+  removeImage: {
+    padding: 8,
+  },
+  removeImageText: {
+    color: '#EF4444',
+    fontWeight: '600',
+    fontSize: 14,
   },
   button: {
     backgroundColor: '#4F46E5',

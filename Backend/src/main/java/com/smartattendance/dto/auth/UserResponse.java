@@ -9,6 +9,7 @@ public class UserResponse {
     private String name;
     private String email;
     private UserRole role;
+    private UUID studentId;
 
     public UserResponse() {
     }
@@ -18,6 +19,14 @@ public class UserResponse {
         this.name = name;
         this.email = email;
         this.role = role;
+    }
+
+    public UserResponse(UUID id, String name, String email, UserRole role, UUID studentId) {
+        this.id = id;
+        this.name = name;
+        this.email = email;
+        this.role = role;
+        this.studentId = studentId;
     }
 
     public UUID getId() {
@@ -51,5 +60,12 @@ public class UserResponse {
     public void setRole(UserRole role) {
         this.role = role;
     }
-}
 
+    public UUID getStudentId() {
+        return studentId;
+    }
+
+    public void setStudentId(UUID studentId) {
+        this.studentId = studentId;
+    }
+}

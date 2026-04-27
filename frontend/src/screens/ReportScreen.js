@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   RefreshControl,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -10,11 +9,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { ArrowLeft, CheckCircle2, Users, XCircle } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, CheckCircle2, User, Users, XCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import attendanceService from '../services/attendanceService';
 import DatePickerField from '../components/DatePickerField';
+import AuthImage from '../components/AuthImage';
 import { getTodayYMD } from '../utils/dateUtils';
 
 const ReportScreen = ({ navigation }) => {
@@ -143,11 +144,18 @@ const ReportScreen = ({ navigation }) => {
                   <Text style={styles.emptyText}>No attendance found</Text>
                 ) : (
                   <View style={styles.list}>
-                    {entries.map((e) => {
+                    {entries.map((e, index) => {
                       const status = String(e?.status || 'ABSENT').toUpperCase();
                       const present = status === 'PRESENT';
                       return (
-                        <View key={e.studentId} style={styles.entryRow}>
+                        <View key={e.studentId || index} style={styles.entryRow}>
+                          <View style={styles.avatarContainer}>
+                            {e.imageUrl ? (
+                              <AuthImage uri={e.imageUrl} style={styles.avatarImage} />
+                            ) : (
+                              <User size={16} color="#94A3B8" />
+                            )}
+                          </View>
                           <View style={{ flex: 1 }}>
                             <Text style={styles.entryName}>{e.name}</Text>
                             <Text style={styles.entrySub}>Roll: {e.rollNumber}</Text>
@@ -288,10 +296,23 @@ const styles = StyleSheet.create({
   entryRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#F3F4F6',
+    gap: 12,
+  },
+  avatarContainer: {
+    width: 40,
+    height: 40,
+    borderRadius: 10,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   entryName: {
     fontSize: 15,

@@ -1,7 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
-  SafeAreaView,
   ScrollView,
   StatusBar,
   StyleSheet,
@@ -9,7 +8,8 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { ArrowLeft, CheckCircle2, User, XCircle } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import attendanceService from '../services/attendanceService';
@@ -69,8 +69,12 @@ const StudentAttendanceScreen = ({ navigation, route }) => {
 
         <View style={styles.body}>
           <View style={styles.profileCard}>
-            <View style={styles.avatar}>
-              {imageUrl ? <AuthImage uri={imageUrl} style={styles.avatar} /> : null}
+            <View style={styles.avatarContainer}>
+              {imageUrl ? (
+                <AuthImage uri={imageUrl} style={styles.avatarImage} />
+              ) : (
+                <User size={32} color="#94A3B8" />
+              )}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.name}>{name || 'Student'}</Text>
@@ -151,17 +155,23 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderRadius: 24,
     padding: 16,
+    marginBottom: 16,
     borderWidth: 1,
     borderColor: '#F3F4F6',
-    marginBottom: 16,
-    gap: 14,
   },
-  avatar: {
-    width: 56,
-    height: 56,
+  avatarContainer: {
+    width: 64,
+    height: 64,
     borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
     overflow: 'hidden',
-    backgroundColor: '#EEF2FF',
+    marginRight: 16,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   name: {
     fontSize: 16,

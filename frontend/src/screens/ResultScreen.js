@@ -4,12 +4,13 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  SafeAreaView, 
   ScrollView,
   StatusBar
 } from 'react-native';
-import { Check, X, ArrowLeft } from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { Check, X, ArrowLeft, User } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import AuthImage from '../components/AuthImage';
 
 const ResultScreen = ({ navigation, route }) => {
   const { result } = route.params || {};
@@ -77,10 +78,14 @@ const ResultScreen = ({ navigation, route }) => {
                 <Text style={styles.sectionBadge}>{presentStudents.length}</Text>
               </View>
               
-              {presentStudents.map((student) => (
-                <View key={student.studentId} style={styles.studentCard}>
+              {presentStudents.map((student, index) => (
+                <View key={student.studentId || index} style={styles.studentCard}>
                   <View style={[styles.avatarContainer, { backgroundColor: '#D1FAE5' }]}>
-                    <Text style={styles.avatarText}>👤</Text>
+                    {student.imageUrl ? (
+                      <AuthImage uri={student.imageUrl} style={styles.avatarImage} />
+                    ) : (
+                      <User size={16} color="#059669" />
+                    )}
                   </View>
                   <View style={styles.studentInfo}>
                     <Text style={styles.studentName}>{student.name}</Text>
@@ -104,10 +109,14 @@ const ResultScreen = ({ navigation, route }) => {
                 <Text style={[styles.sectionBadge, { color: '#DC2626', backgroundColor: '#FEE2E2' }]}>{absentStudents.length}</Text>
               </View>
               
-              {absentStudents.map((student) => (
-                <View key={student.studentId} style={styles.studentCard}>
+              {absentStudents.map((student, index) => (
+                <View key={student.studentId || index} style={styles.studentCard}>
                   <View style={[styles.avatarContainer, { backgroundColor: '#FEE2E2' }]}>
-                    <Text style={styles.avatarText}>👤</Text>
+                    {student.imageUrl ? (
+                      <AuthImage uri={student.imageUrl} style={styles.avatarImage} />
+                    ) : (
+                      <User size={16} color="#DC2626" />
+                    )}
                   </View>
                   <View style={styles.studentInfo}>
                     <Text style={styles.studentName}>{student.name}</Text>
@@ -243,14 +252,16 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   avatarContainer: {
-    width: 44,
-    height: 44,
+    width: 40,
+    height: 40,
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden',
   },
-  avatarText: {
-    fontSize: 20,
+  avatarImage: {
+    width: '100%',
+    height: '100%',
   },
   studentInfo: {
     flex: 1,

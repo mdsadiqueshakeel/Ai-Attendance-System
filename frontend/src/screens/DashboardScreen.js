@@ -4,12 +4,12 @@ import {
   Text, 
   TouchableOpacity, 
   StyleSheet, 
-  SafeAreaView, 
   ScrollView,
   Dimensions,
   StatusBar,
   Alert
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { Camera, FileText, Users, TrendingUp, ChevronRight, LogOut, CheckSquare } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import authService from '../services/authService';

@@ -94,6 +94,9 @@ class FaceService:
         Recognizes faces in the given RGB image with strict filtering and deduplication.
         Returns a list of {"user_id": "...", "confidence": ...} sorted by confidence.
         """
+        print(f"DEBUG: Recognizing against {len(self.known_encodings)} encodings")
+        print(f"DEBUG: Known User IDs: {list(set(self.mapping.values()))}")
+        
         if not self.known_encodings:
             return []
 
@@ -138,6 +141,69 @@ class FaceService:
         results.sort(key=lambda x: x["confidence"], reverse=True)
 
         return results
+
+    def register_face(self, user_id, image_rgb):
+        """
+        Registers a single face for a user.
+        Validates that exactly one face is present.
+        """
+        # Detect all faces in the input image
+        face_locations = face_recognition.face_locations(image_rgb)
+        
+        if len(face_locations) == 0:
+            return False, "No face detected in the image."
+        if len(face_locations) > 1:
+            return False, "Multiple faces detected. Please provide an image with only one face."
+
+        # Get encoding for the single face
+        encodings = face_recognition.face_encodings(image_rgb, face_locations)
+        if not encodings:
+            return False, "Could not extract face encoding."
+
+        new_encoding = encodings[0]
+        
+        # Add to memory
+        index = len(self.known_encodings)
+        self.known_encodings.append(new_encoding)
+        self.mapping[str(index)] = user_id
+
+        # Save to disk
+        try:
+            np.save(self.encodings_path, np.array(self.known_encodings))
+            with open(self.mapping_path, 'w') as f:
+                json.dump(self.mapping, f, indent=4)
+            return True, "Face registered successfully."
+        except Exception as e:
+            return False, f"Error saving registration: {str(e)}"
+
+    def delete_user_faces(self, user_id):
+        """
+        Removes all encodings and mapping entries for a specific user_id.
+        """
+        if not self.known_encodings:
+            return False, "No encodings loaded."
+
+        # Find indices to keep
+        indices_to_keep = [int(idx) for idx, uid in self.mapping.items() if uid != user_id]
+        
+        if len(indices_to_keep) == len(self.known_encodings):
+            return False, f"No entries found for user_id: {user_id}"
+
+        # Update encodings and mapping
+        new_encodings = [self.known_encodings[i] for i in indices_to_keep]
+        new_mapping = {str(i): user_id for i, user_id in enumerate([self.mapping[str(idx)] for idx in indices_to_keep])}
+
+        self.known_encodings = new_encodings
+        self.mapping = new_mapping
+
+        # Save to disk
+        try:
+            np.save(self.encodings_path, np.array(self.known_encodings))
+            with open(self.mapping_path, 'w') as f:
+                json.dump(self.mapping, f, indent=4)
+            return True, f"All faces for user {user_id} deleted successfully."
+        except Exception as e:
+            return False, f"Error saving after deletion: {str(e)}"
 
 # Singleton instance
 face_service = FaceService()
