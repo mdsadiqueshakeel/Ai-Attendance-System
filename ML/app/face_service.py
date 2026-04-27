@@ -1,0 +1,138 @@
+import os
+import json
+import numpy as np
+import face_recognition
+import cv2
+
+class FaceService:
+    def __init__(self, data_dir="data"):
+        self.data_dir = data_dir
+        # Try to find the known faces directory
+        self.known_faces_dir = os.path.join(self.data_dir, "known_faces")
+        if not os.path.exists(self.known_faces_dir):
+            # Fallback to 'known faces' with space if 'known_faces' doesn't exist
+            alt_dir = os.path.join(self.data_dir, "known faces")
+            if os.path.exists(alt_dir):
+                self.known_faces_dir = alt_dir
+        
+        self.encodings_path = os.path.join(self.data_dir, "encodings.npy")
+        self.mapping_path = os.path.join(self.data_dir, "mapping.json")
+        
+        self.known_encodings = []
+        self.mapping = {}
+        
+        # Load existing encodings if they exist
+        self.load_from_disk()
+
+    def load_encodings(self):
+        """
+        Traverses the known_faces directory, encodes faces, and saves to disk.
+        """
+        new_encodings = []
+        new_mapping = {}
+        index = 0
+
+        if not os.path.exists(self.known_faces_dir):
+            print(f"Directory {self.known_faces_dir} not found.")
+            return False
+
+        for user_id in os.listdir(self.known_faces_dir):
+            user_path = os.path.join(self.known_faces_dir, user_id)
+            if not os.path.isdir(user_path):
+                continue
+
+            for image_name in os.listdir(user_path):
+                image_path = os.path.join(user_path, image_name)
+                try:
+                    # Load image
+                    image = face_recognition.load_image_file(image_path)
+                    
+                    # Detect faces and get encodings
+                    # Using 'hog' for CPU performance, 'cnn' is better but slower
+                    encodings = face_recognition.face_encodings(image)
+                    
+                    if len(encodings) > 0:
+                        # Take the first face detected in the image
+                        new_encodings.append(encodings[0])
+                        new_mapping[str(index)] = user_id
+                        index += 1
+                        print(f"Encoded {image_name} for user {user_id}")
+                    else:
+                        print(f"No face detected in {image_path}")
+                except Exception as e:
+                    print(f"Error processing {image_path}: {e}")
+
+        if new_encodings:
+            self.known_encodings = new_encodings
+            self.mapping = new_mapping
+            
+            # Save to disk
+            np.save(self.encodings_path, np.array(self.known_encodings))
+            with open(self.mapping_path, 'w') as f:
+                json.dump(self.mapping, f, indent=4)
+            return True
+        
+        return False
+
+    def load_from_disk(self):
+        """
+        Loads encodings and mapping from disk into memory.
+        """
+        if os.path.exists(self.encodings_path) and os.path.exists(self.mapping_path):
+            try:
+                self.known_encodings = np.load(self.encodings_path).tolist()
+                with open(self.mapping_path, 'r') as f:
+                    self.mapping = json.load(f)
+                print("Loaded encodings and mapping from disk.")
+                return True
+            except Exception as e:
+                print(f"Error loading from disk: {e}")
+        return False
+
+    def recognize_faces(self, image_rgb, threshold=0.6):
+        """
+        Recognizes faces in the given RGB image.
+        Returns a list of {"user_id": "...", "confidence": ...}
+        """
+        if not self.known_encodings:
+            return []
+
+        # Detect all faces in the input image
+        face_locations = face_recognition.face_locations(image_rgb)
+        face_encodings = face_recognition.face_encodings(image_rgb, face_locations)
+
+        results = []
+
+        for face_encoding in face_encodings:
+            # Calculate Euclidean distances to all known encodings
+            distances = face_recognition.face_distance(self.known_encodings, face_encoding)
+            
+            if len(distances) == 0:
+                continue
+
+            # Find the best match
+            best_match_index = np.argmin(distances)
+            min_distance = distances[best_match_index]
+
+            # If distance is within threshold, it's a match
+            if min_distance <= threshold:
+                user_id = self.mapping.get(str(best_match_index), "unknown")
+                # Confidence can be calculated as 1 - distance (normalized)
+                # However, face_recognition distances aren't strictly 0-1.
+                # A common way to get a "confidence" score is to use the distance.
+                confidence = float(1.0 - min_distance)
+                
+                results.append({
+                    "user_id": user_id,
+                    "confidence": round(confidence, 2)
+                })
+            else:
+                # Optional: return "unknown" if requested, but prompt says 
+                # "If face not matched -> skip or return 'unknown'"
+                # I'll choose to skip for a cleaner response unless specified otherwise.
+                pass
+
+        return results
+
+# Singleton instance
+face_service = FaceService()
