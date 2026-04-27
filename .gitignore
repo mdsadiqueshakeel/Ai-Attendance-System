@@ -10,5 +10,18 @@ application-local.yml
 .env
 uploads/
 
+# Python
+venv/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+
+# ML Data
+ml/data/encodings.npy
+ml/data/mapping.json
+ml/data/known_faces/
+ml/data/known faces/
+
 # Do not commit developer-local Spring config (often contains secrets)
 Backend/src/main/resources/application.properties

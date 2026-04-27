@@ -1,17 +1,29 @@
 package com.smartattendance.service;
 
+import com.smartattendance.config.AppProperties;
 import com.smartattendance.dto.attendance.AttendanceResponse;
+import com.smartattendance.dto.attendance.AutoAttendanceResponse;
 import com.smartattendance.dto.attendance.ClassReportResponse;
 import com.smartattendance.dto.attendance.MarkAttendanceRequest;
 import com.smartattendance.dto.attendance.StudentAttendanceEntry;
 import com.smartattendance.entity.Attendance;
 import com.smartattendance.entity.AttendanceStatus;
 import com.smartattendance.entity.Student;
+import com.smartattendance.entity.User;
 import com.smartattendance.exception.NotFoundException;
 import com.smartattendance.repository.AttendanceRepository;
 import com.smartattendance.repository.StudentRepository;
 import jakarta.transaction.Transactional;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.Comparator;
@@ -19,16 +31,23 @@ import java.util.HashMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 public class AttendanceService {
     private final AttendanceRepository attendanceRepository;
     private final StudentRepository studentRepository;
+    private final AppProperties props;
+    private final RestTemplate restTemplate;
 
-    public AttendanceService(AttendanceRepository attendanceRepository, StudentRepository studentRepository) {
+    public AttendanceService(AttendanceRepository attendanceRepository, StudentRepository studentRepository,
+            AppProperties props) {
         this.attendanceRepository = attendanceRepository;
         this.studentRepository = studentRepository;
+        this.props = props;
+        this.restTemplate = new RestTemplate();
     }
 
     @Transactional
@@ -69,11 +88,14 @@ public class AttendanceService {
                 .map(s -> {
                     Attendance a = byStudent.get(s.getId());
                     if (a == null) {
-                        return new StudentAttendanceEntry(null, s.getId(), s.getRollNumber(), s.getUser().getName(), AttendanceStatus.ABSENT, false);
+                        return new StudentAttendanceEntry(null, s.getId(), s.getRollNumber(), s.getUser().getName(),
+                                AttendanceStatus.ABSENT, false);
                     }
-                    return new StudentAttendanceEntry(a.getId(), s.getId(), s.getRollNumber(), s.getUser().getName(), a.getStatus(), true);
+                    return new StudentAttendanceEntry(a.getId(), s.getId(), s.getRollNumber(), s.getUser().getName(),
+                            a.getStatus(), true);
                 })
-                .sorted(Comparator.comparing(StudentAttendanceEntry::getRollNumber, Comparator.nullsLast(String::compareToIgnoreCase)))
+                .sorted(Comparator.comparing(StudentAttendanceEntry::getRollNumber,
+                        Comparator.nullsLast(String::compareToIgnoreCase)))
                 .toList();
 
         int present = (int) entries.stream().filter(e -> e.getStatus() == AttendanceStatus.PRESENT).count();
@@ -94,11 +116,97 @@ public class AttendanceService {
         // Ensure student exists (better error message than returning empty list)
         studentRepository.findById(studentId).orElseThrow(() -> new NotFoundException("Student not found"));
 
-        List<Attendance> records = attendanceRepository.findByStudent_IdAndDateBetweenOrderByDateAsc(studentId, from, to);
+        List<Attendance> records = attendanceRepository.findByStudent_IdAndDateBetweenOrderByDateAsc(studentId, from,
+                to);
         List<AttendanceResponse> out = new ArrayList<>(records.size());
         for (Attendance a : records) {
             out.add(new AttendanceResponse(a.getId(), a.getStudent().getId(), a.getDate(), a.getStatus(), true));
         }
         return out;
+    }
+
+    @Transactional
+    public AutoAttendanceResponse autoAttendance(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("File is required");
+        }
+
+        // 1. Call ML Service
+        List<Map<String, Object>> recognizedUsers;
+        try {
+            recognizedUsers = callMlService(file);
+        } catch (Exception e) {
+            throw new RuntimeException("ML service unavailable", e);
+        }
+
+        Set<String> presentUserIds = recognizedUsers.stream()
+                .map(m -> (String) m.get("user_id"))
+                .collect(Collectors.toSet());
+
+        // 2. Fetch all students
+        List<Student> allStudents = studentRepository.findAll();
+        LocalDate today = LocalDate.now();
+
+        // 3. Mark attendance
+        List<StudentAttendanceEntry> details = new ArrayList<>();
+        int presentCount = 0;
+
+        for (Student s : allStudents) {
+            String userIdStr = s.getUser().getId().toString();
+            AttendanceStatus status = presentUserIds.contains(userIdStr) ? AttendanceStatus.PRESENT
+                    : AttendanceStatus.ABSENT;
+
+            Attendance a = attendanceRepository.findByStudent_IdAndDate(s.getId(), today)
+                    .orElseGet(() -> {
+                        Attendance na = new Attendance();
+                        na.setStudent(s);
+                        na.setDate(today);
+                        return na;
+                    });
+
+            a.setStatus(status);
+            Attendance saved = attendanceRepository.save(a);
+
+            if (status == AttendanceStatus.PRESENT) {
+                presentCount++;
+            }
+
+            details.add(new StudentAttendanceEntry(
+                    saved.getId(),
+                    s.getId(),
+                    s.getRollNumber(),
+                    s.getUser().getName(),
+                    status,
+                    true));
+        }
+
+        int total = allStudents.size();
+        int absent = total - presentCount;
+
+        return new AutoAttendanceResponse(today, total, presentCount, absent, details);
+    }
+
+    private List<Map<String, Object>> callMlService(MultipartFile file) throws Exception {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        ByteArrayResource resource = new ByteArrayResource(file.getBytes()) {
+            @Override
+            public String getFilename() {
+                return file.getOriginalFilename();
+            }
+        };
+        body.add("file", resource);
+
+        HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+        String url = props.getMl().getServiceUrl() + "/recognize";
+
+        return restTemplate.exchange(
+                url,
+                org.springframework.http.HttpMethod.POST,
+                requestEntity,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {
+                }).getBody();
     }
 }

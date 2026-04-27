@@ -1,21 +1,44 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   ActivityIndicator, 
-  SafeAreaView 
+  SafeAreaView,
+  Alert 
 } from 'react-native';
 import { Users } from 'lucide-react-native';
+import attendanceService from '../services/attendanceService';
 
 const ProcessingScreen = ({ navigation, route }) => {
-  // Simulate processing time
+  const { photoUri } = route.params;
+  const [error, setError] = useState(null);
+
   useEffect(() => {
-    const timer = setTimeout(() => {
-      navigation.replace('Result');
-    }, 3000);
-    return () => clearTimeout(timer);
+    processAttendance();
   }, []);
+
+  const processAttendance = async () => {
+    try {
+      const result = await attendanceService.autoMarkAttendance({
+        uri: photoUri
+      });
+      navigation.replace('Result', { result });
+    } catch (err) {
+      console.error('Auto attendance error:', err);
+      let errorMsg = 'Failed to process attendance. Please try again.';
+      if (err.response?.data?.message) {
+        errorMsg = err.response.data.message;
+      } else if (err.message === 'ML service unavailable') {
+        errorMsg = 'Face recognition service is currently unavailable.';
+      }
+      
+      Alert.alert('Error', errorMsg, [
+        { text: 'Go Back', onPress: () => navigation.goBack() }
+      ]);
+      setError(errorMsg);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.container}>

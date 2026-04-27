@@ -37,4 +37,29 @@ const getAttendanceReport = async (date) => {
   }
 };
 
-export default { markAttendance, getStudentAttendance, getAttendanceReport };
+const autoMarkAttendance = async (imageFile) => {
+  try {
+    const formData = new FormData();
+    formData.append('file', {
+      uri: imageFile.uri,
+      name: 'attendance_image.jpg',
+      type: 'image/jpeg',
+    });
+
+    const response = await api.post('/api/attendance/auto', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export default { 
+  markAttendance, 
+  getStudentAttendance, 
+  getAttendanceReport,
+  autoMarkAttendance
+};

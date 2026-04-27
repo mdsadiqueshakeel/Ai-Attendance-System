@@ -1,6 +1,7 @@
 package com.smartattendance.controller;
 
 import com.smartattendance.dto.attendance.AttendanceResponse;
+import com.smartattendance.dto.attendance.AutoAttendanceResponse;
 import com.smartattendance.dto.attendance.ClassReportResponse;
 import com.smartattendance.dto.attendance.MarkAttendanceRequest;
 import com.smartattendance.service.AttendanceService;
@@ -14,7 +15,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -38,17 +41,20 @@ public class AttendanceController {
     @PreAuthorize("hasRole('ADMIN')")
     public AttendanceResponse getForStudent(
             @PathVariable UUID studentId,
-            @RequestParam("date") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
+            @RequestParam("date") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return attendanceService.getByStudentAndDate(studentId, date);
     }
 
     @GetMapping("/report")
     @PreAuthorize("hasRole('ADMIN')")
     public ClassReportResponse report(
-            @RequestParam("date") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
-    ) {
+            @RequestParam("date") @NotNull @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date) {
         return attendanceService.classReport(date);
     }
-}
 
+    @PostMapping(path = "/auto", consumes = "multipart/form-data")
+    @PreAuthorize("hasRole('ADMIN')")
+    public AutoAttendanceResponse autoAttendance(@RequestPart("file") MultipartFile file) {
+        return attendanceService.autoAttendance(file);
+    }
+}

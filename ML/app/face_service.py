@@ -91,8 +91,8 @@ class FaceService:
 
     def recognize_faces(self, image_rgb, threshold=0.6):
         """
-        Recognizes faces in the given RGB image.
-        Returns a list of {"user_id": "...", "confidence": ...}
+        Recognizes faces in the given RGB image with strict filtering and deduplication.
+        Returns a list of {"user_id": "...", "confidence": ...} sorted by confidence.
         """
         if not self.known_encodings:
             return []
@@ -101,7 +101,9 @@ class FaceService:
         face_locations = face_recognition.face_locations(image_rgb)
         face_encodings = face_recognition.face_encodings(image_rgb, face_locations)
 
-        results = []
+        # Dictionary to store unique user results and their best confidence
+        # user_id -> max_confidence
+        unique_matches = {}
 
         for face_encoding in face_encodings:
             # Calculate Euclidean distances to all known encodings
@@ -110,27 +112,30 @@ class FaceService:
             if len(distances) == 0:
                 continue
 
-            # Find the best match
+            # Find the best match (minimum distance) for THIS specific face
             best_match_index = np.argmin(distances)
             min_distance = distances[best_match_index]
+            
+            # Convert distance to confidence (0-1)
+            confidence = float(1.0 - min_distance)
 
-            # If distance is within threshold, it's a match
-            if min_distance <= threshold:
+            # REQUIREMENT 1: CONFIDENCE FILTER (MANDATORY >= 0.6)
+            if confidence >= threshold:
                 user_id = self.mapping.get(str(best_match_index), "unknown")
-                # Confidence can be calculated as 1 - distance (normalized)
-                # However, face_recognition distances aren't strictly 0-1.
-                # A common way to get a "confidence" score is to use the distance.
-                confidence = float(1.0 - min_distance)
                 
-                results.append({
-                    "user_id": user_id,
-                    "confidence": round(confidence, 2)
-                })
-            else:
-                # Optional: return "unknown" if requested, but prompt says 
-                # "If face not matched -> skip or return 'unknown'"
-                # I'll choose to skip for a cleaner response unless specified otherwise.
-                pass
+                # REQUIREMENT 4: REMOVE DUPLICATES (One entry per user)
+                # If user already found in this image, keep the one with higher confidence
+                if user_id not in unique_matches or confidence > unique_matches[user_id]:
+                    unique_matches[user_id] = round(confidence, 2)
+
+        # Convert dictionary to strict output format list
+        results = [
+            {"user_id": uid, "confidence": conf} 
+            for uid, conf in unique_matches.items()
+        ]
+
+        # REQUIREMENT 5: SORT OUTPUT (Confidence DESC)
+        results.sort(key=lambda x: x["confidence"], reverse=True)
 
         return results
 

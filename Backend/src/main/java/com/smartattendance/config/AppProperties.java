@@ -7,6 +7,7 @@ public class AppProperties {
     private final Jwt jwt = new Jwt();
     private final Upload upload = new Upload();
     private final Seed seed = new Seed();
+    private final Ml ml = new Ml();
 
     public Jwt getJwt() {
         return jwt;
@@ -18,6 +19,10 @@ public class AppProperties {
 
     public Seed getSeed() {
         return seed;
+    }
+
+    public Ml getMl() {
+        return ml;
     }
 
     public static class Jwt {
@@ -80,6 +85,18 @@ public class AppProperties {
 
         public void setDefaultPassword(String defaultPassword) {
             this.defaultPassword = defaultPassword;
+        }
+    }
+
+    public static class Ml {
+        private String serviceUrl = "http://localhost:8000";
+
+        public String getServiceUrl() {
+            return serviceUrl;
+        }
+
+        public void setServiceUrl(String serviceUrl) {
+            this.serviceUrl = serviceUrl;
         }
     }
 }

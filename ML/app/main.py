@@ -6,6 +6,9 @@ import uvicorn
 
 app = FastAPI(title="Face Recognition Microservice")
 
+# Configuration
+RECOGNITION_THRESHOLD = 0.6
+
 @app.post("/load-encodings")
 async def load_encodings():
     """
@@ -34,9 +37,8 @@ async def recognize(file: UploadFile = File(...)):
         if image_rgb is None:
             raise HTTPException(status_code=400, detail="Invalid image file.")
 
-        # Recognize faces
-        # Threshold: 0.5–0.6 as per requirements
-        results = face_service.recognize_faces(image_rgb, threshold=0.6)
+        # Recognize faces with strict threshold
+        results = face_service.recognize_faces(image_rgb, threshold=RECOGNITION_THRESHOLD)
         
         return results
     except Exception as e:

@@ -12,6 +12,7 @@ import com.smartattendance.exception.NotFoundException;
 import com.smartattendance.repository.StudentRepository;
 import com.smartattendance.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import net.coobird.thumbnailator.Thumbnails;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -92,8 +93,7 @@ public class StudentService {
                                 u.getName(),
                                 u.getEmail(),
                                 null,
-                                null
-                        );
+                                null);
                     }
                     return toResponse(s);
                 })
@@ -146,7 +146,8 @@ public class StudentService {
         }
 
         String contentType = file.getContentType();
-        if (contentType == null) contentType = "";
+        if (contentType == null)
+            contentType = "";
         contentType = contentType.toLowerCase(Locale.ROOT);
         String ext = switch (contentType) {
             case "image/jpeg", "image/jpg" -> "jpg";
@@ -161,7 +162,7 @@ public class StudentService {
         Path studentDir = root.resolve("students").resolve(student.getId().toString());
         try {
             Files.createDirectories(studentDir);
-            String filename = "face_" + Instant.now().toEpochMilli() + "." + ext;
+            String filename = "face_" + Instant.now().toEpochMilli() + ".jpg";
             Path dest = studentDir.resolve(filename).normalize();
 
             if (!dest.startsWith(root)) {
@@ -169,7 +170,12 @@ public class StudentService {
             }
 
             try (InputStream in = file.getInputStream()) {
-                Files.copy(in, dest, StandardCopyOption.REPLACE_EXISTING);
+                Thumbnails.of(in)
+                        .size(800, 800)
+                        .keepAspectRatio(true)
+                        .outputFormat("jpg")
+                        .outputQuality(0.7)
+                        .toFile(dest.toFile());
             }
 
             String relative = root.relativize(dest).toString().replace("\\", "/");
@@ -190,7 +196,6 @@ public class StudentService {
                 u.getName(),
                 u.getEmail(),
                 s.getRollNumber(),
-                s.getImageUrl()
-        );
+                s.getImageUrl());
     }
 }
