@@ -161,7 +161,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ---
 
 ## 👤 Author
-**Sadique Shakeel**
+**Sadique Shakeel** | **Md Aman**
 *   Engineering Student | Software Developer
-*   [GitHub](https://github.com/mdsadiqueshakeel)
-*   [LinkedIn](https://www.linkedin.com/in/sadique-shakeel-a5bb29266)
+*   [GitHub](https://github.com/mdsadiqueshakeel) | [GitHub](https://github.com/md-aman45).
+*   [LinkedIn](https://www.linkedin.com/in/sadique-shakeel-a5bb29266) | [LinkedIn](https://www.linkedin.com/in/md-aman-7941a0355/)
